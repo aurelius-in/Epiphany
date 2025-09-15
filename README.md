@@ -2,16 +2,135 @@
 
 ![Epiphany Logo](epiphany.gif)
 
-**Epiphany AI Art Studio** is a self-hosted image-generation stack powered by SDXL and ControlNet with a Next.js UI and a FastAPI GPU worker, featuring prompt enhancement, style presets, txt2img/img2img/inpainting, Safe vs Research modes, Redis jobs, S3 storage, and audit-ready logs.
+**Epiphany AI Art Studio** is a self-hosted image‑generation stack powered by SDXL and ControlNet with a Next.js UI and a FastAPI GPU worker, featuring prompt enhancement, style presets, txt2img/img2img/inpainting, Safe vs Research modes, Redis jobs, S3 storage, and audit‑ready logs.
+
+---
 
 ## ✨ Features
-- **Text-to-Image (SDXL)** with seeds, steps, CFG, aspect ratios  
-- **Image-to-Image & Variations**  
-- **Inpainting / Outpainting** (mask upload)  
-- **ControlNet Guidance** (depth/edge/pose)  
-- **Prompt Enhancement** (LLM-assisted)  
-- **Style Presets** (one-click looks)  
-- **Safe / Research Modes** (toggle safety checker)  
+- **Text‑to‑Image (SDXL)** with seeds, steps, CFG, aspect ratios
+- **Image‑to‑Image & Variations**
+- **Inpainting / Outpainting** (mask upload)
+- **ControlNet Guidance** (depth/edge/pose)
+- **Prompt Enhancement** (LLM‑assisted)
+- **Style Presets** (one‑click looks)
+- **Safe / Research Modes** (toggle safety checker)
+- **Audit Logging** (prompt, params, model hash, duration, URL)
+- **Batch Jobs** via Redis queue
+- **Gallery & History** with “Recreate” params
+
+---
+
+## 🖥 Architecture
+
+```
+epiphany/
+  apps/web/          # Next.js 14 + Tailwind UI
+  services/api/      # Express API + BullMQ + Prisma + S3/MinIO
+  services/infer/    # FastAPI + Diffusers (SDXL, Inpainting, ControlNet)
+  packages/sdk/      # Tiny TS client for /enhance and /jobs
+  infra/compose/     # docker-compose for Postgres, Redis, MinIO
+  ops/migrations/    # Prisma migrations
+```
+```mermaid
+flowchart LR
+  UI["Next.js UI"] -->|REST: /enhance, /jobs| API["Express API"]
+  UI -->|Poll: /jobs/:id| API
+  API -->|enqueue| Q[(Redis Queue)]
+  Q -->|pull job| WKR["GPU Inference Worker\n(FastAPI + Diffusers)"]
+  WKR -->|PNG URL| S3[(S3/MinIO)]
+  API --> DB[(Postgres \n Audit Logs)]
+```
+- **Queue:** Redis (BullMQ) for job scheduling
+- **Database:** Postgres via Prisma for audit logs
+- **Storage:** S3/MinIO for outputs
+- **Worker:** GPU‑accelerated inference service (PyTorch, Diffusers)
+
+---
+
+## 🚀 Getting Started
+
+1) **Run infra (DB, Redis, MinIO)**
+```bash
+docker compose -f infra/compose/docker-compose.yaml up -d
+```
+
+2) **Migrate database**
+```bash
+cd services/api
+pnpm prisma:migrate dev
+```
+
+3) **Run inference worker (GPU required)**
+```bash
+cd services/infer
+uvicorn server:app --host 0.0.0.0 --port 8000
+```
+
+4) **Run API**
+```bash
+cd services/api
+pnpm dev
+```
+
+5) **Run Web**
+```bash
+cd apps/web
+pnpm dev
+```
+Open http://localhost:3000
+
+---
+
+## ⚙️ Environment
+
+Copy `.env.example` to `.env` and fill as needed:
+```
+API_PORT=4000
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/epiphany
+REDIS_URL=redis://localhost:6379
+S3_REGION=us-east-1
+S3_BUCKET=epiphany-outputs
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
+PUBLIC_BASE_URL=http://localhost:4000
+OPENAI_API_KEY=
+
+INFER_PORT=8000
+INFER_MODEL=stabilityai/stable-diffusion-xl-base-1.0
+INFER_USE_SAFETY=true
+```
+
+---
+
+## 🎨 Branding
+
+- Gradient: **#FF007A → #7A00FF → #FF6A00**
+- Background: **#0A0A0A** (black/charcoal)
+
+Add utilities to your global CSS:
+```css
+.bg-epiphany-gradient {
+  background: linear-gradient(90deg, #FF007A 0%, #7A00FF 50%, #FF6A00 100%);
+}
+.text-epiphany-gradient {
+  background: linear-gradient(90deg, #FF007A 0%, #7A00FF 50%, #FF6A00 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+```
+
+---
+
+## 📊 Roadmap
+- Vector export (SVG trace)
+- Multi‑image batch uploader
+- Collaboration boards & sharing
+- Basic video extensions
+
+---
+
+## 📜 License
+MIT — for research, education, and portfolio use.
 - **Audit Logging** (prompt, params, model hash, duration, URL)  
 - **Batch Jobs** via Redis queue  
 - **Gallery & History** with “Recreate” params
