@@ -30,11 +30,11 @@ epiphany/
 
 ```mermaid
 flowchart LR
-  UI[Next.js Web] -->|REST /enhance, /jobs| API[Express API]
-  API -->|enqueue| Q[(Redis Queue)]
-  WKR[GPU Inference Worker (FastAPI + Diffusers)] --> S3[(S3/MinIO)]
+  UI["Next.js Web"] -->|REST /enhance, /jobs| API["Express API"]
+  API -->|enqueue| Q[("Redis Queue")]
+  WKR["GPU Inference Worker (FastAPI + Diffusers)"] --> S3[("S3/MinIO")]
   Q -->|pull job| WKR
-  API --> DB[(Postgres)]
+  API --> DB[("Postgres")]
   UI -->|poll /jobs/:id| API
 ```
 
