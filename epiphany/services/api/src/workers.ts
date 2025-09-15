@@ -6,16 +6,23 @@ import { prisma } from './db'
 const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379')
 const explainQueue = new Queue('explain', { connection })
 
+function selectImageEndpoint(data: any): string {
+	if (data?.controlnet?.type) return 'http://localhost:8001/infer/controlnet'
+	if (data?.maskUrl) return 'http://localhost:8001/infer/inpaint'
+	if (data?.initImageUrl) return 'http://localhost:8001/infer/img2img'
+	return 'http://localhost:8001/infer/txt2img'
+}
+
 async function processGenerateImage(job: Job) {
 	await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'running' } })
-	const resp = await postJson<any>('http://localhost:8001/infer/txt2img', job.data)
+	const url = selectImageEndpoint(job.data)
+	const resp = await postJson<any>(url, job.data)
 	await prisma.generation.update({ where: { id: job.data.generationId }, data: {
 		status: 'succeeded', outputUrl: resp.output_url || null, previewUrls: resp.preview_urls || [], durationMs: resp.duration_ms || null, modelHash: resp.model_hash || null, safety: resp.safety_scores || null,
 	} })
 	if (resp.output_url) {
 		await prisma.asset.create({ data: { url: resp.output_url, kind: 'image', mime: 'image/png' } })
 	}
-	// enqueue explain job
 	const ex = await explainQueue.add('explain', { generationId: job.data.generationId }, { removeOnComplete: true, removeOnFail: true })
 	return { ...resp, explain_id: ex.id }
 }
