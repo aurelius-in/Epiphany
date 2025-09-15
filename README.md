@@ -2,16 +2,84 @@
 
 ![Epiphany Logo](epiphany.gif)
 
-> **Epiphany AI Art Studio** is a self-hosted image generation platform built with SDXL and ControlNet, offering a Next.js UI, FastAPI GPU worker, prompt enhancement, presets, inpainting/outpainting, and safe vs. research modes — all backed by Redis jobs, S3 storage, and audit-ready logs.
-
----
+**Epiphany AI Art Studio** is a self-hosted image-generation stack powered by SDXL and ControlNet with a Next.js UI and a FastAPI GPU worker, featuring prompt enhancement, style presets, txt2img/img2img/inpainting, Safe vs Research modes, Redis jobs, S3 storage, and audit-ready logs.
 
 ## ✨ Features
+- **Text-to-Image (SDXL)** with seeds, steps, CFG, aspect ratios  
+- **Image-to-Image & Variations**  
+- **Inpainting / Outpainting** (mask upload)  
+- **ControlNet Guidance** (depth/edge/pose)  
+- **Prompt Enhancement** (LLM-assisted)  
+- **Style Presets** (one-click looks)  
+- **Safe / Research Modes** (toggle safety checker)  
+- **Audit Logging** (prompt, params, model hash, duration, URL)  
+- **Batch Jobs** via Redis queue  
+- **Gallery & History** with “Recreate” params
 
-- **Text-to-Image (SDXL)** — high-quality generations with seeds, steps, CFG, and aspect ratios  
-- **Image-to-Image & Variations** — upload an input image and generate new versions  
-- **Inpainting / Outpainting** — mask regions for edits or expand beyond original borders  
-- **ControlNet Guidance** — reference-based depth, edge, or pose conditioning  
+## 🖥 Architecture
+
+```
+epiphany/
+  apps/web/          # Next.js 14 + Tailwind UI
+  services/api/      # Express API + BullMQ + Prisma + S3/MinIO
+  services/infer/    # FastAPI + Diffusers (SDXL, Inpainting, ControlNet)
+  packages/sdk/      # Tiny TS client for /enhance and /jobs
+  infra/compose/     # docker-compose for Postgres, Redis, MinIO
+  ops/migrations/    # Prisma migrations
+```
+
+```mermaid
+flowchart LR
+  UI[Next.js Web] -->|REST /enhance, /jobs| API[Express API]
+  API -->|enqueue| Q[(Redis Queue)]
+  WKR[GPU Inference Worker\n(FastAPI + Diffusers)] --> S3[(S3/MinIO)]
+  Q -->|pull job| WKR
+  API --> DB[(Postgres)]
+  UI -->|poll /jobs/:id| API
+```
+
+## 🚀 Getting Started
+
+1. **Infra**
+   ```bash
+   docker compose -f infra/compose/docker-compose.yaml up -d
+   ```
+2. **Migrate DB**
+   ```bash
+   cd services/api
+   pnpm prisma:migrate dev
+   ```
+3. **Run GPU Worker**
+   ```bash
+   cd services/infer
+   uvicorn server:app --host 0.0.0.0 --port 8000
+   ```
+4. **Run API**
+   ```bash
+   cd services/api
+   pnpm dev
+   ```
+5. **Run Web**
+   ```bash
+   cd apps/web
+   pnpm dev
+   ```
+Open http://localhost:3000
+
+## 🎨 Branding
+
+- Gradient: **#FF007A → #7A00FF → #FF6A00**  
+- Background: **#0A0A0A** (black/charcoal)  
+- Use `bg-epiphany-gradient` for buttons, `text-epiphany-gradient` for headings.
+
+## 📊 Roadmap
+- Vector export (SVG trace)  
+- Multi-image batch uploader  
+- Collaboration boards & sharing  
+- Basic video extensions
+
+## 📜 License
+MIT — for research, education, and portfolio use.
 - **Prompt Enhancement** — enrich short prompts using GPT for cinematic, styled outputs  
 - **Style Presets** — one-click “Cinematic,” “Noir,” “Watercolor,” and more  
 - **Safe / Research Modes** — toggle between filtered outputs or unrestricted generation  
