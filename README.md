@@ -1,3 +1,5 @@
+![Epiphany Preview](epiphany-preview.gif)
+
 Epiphany AI Art Studio — Full-Stack Diffusion + Video
 
 A production‑ready, demo‑friendly AI art studio for images and video.
