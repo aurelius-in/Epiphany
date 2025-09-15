@@ -106,8 +106,24 @@ body.theme-dark{
 .input:focus,.select:focus{ box-shadow: 0 0 0 2px rgba(255,0,122,.25) }
 
 .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:12px }
-.grid-3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:10px }
+.grid-3{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(140px, 1fr));
+  gap:12px;
+  align-items:end; /* bottoms line up */
+}
 
+/* on very small widths, stay one row with horizontal scroll instead of wrapping */
+@media (max-width: 560px){
+  .grid-3{
+    display:flex;
+    gap:10px;
+    overflow-x:auto;
+    padding-bottom:4px;
+    scrollbar-width: thin;
+  }
+  .grid-3 > *{ min-width: 160px; flex: 0 0 auto; }
+}
 .actions{ display:flex; gap:10px; margin-top:16px }
 .btn-gradient{
   background:linear-gradient(90deg, var(--accent1), var(--accent2), var(--accent3));
