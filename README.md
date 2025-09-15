@@ -1,4 +1,3 @@
-# Epiphany AI Art Studio
 
 ![Epiphany Logo](epiphany.gif)
 
