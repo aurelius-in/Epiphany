@@ -1,0 +1,35 @@
+﻿# Node
+node_modules/
+.pnpm-store/
+
+# Builds
+.next/
+.vercel/
+dist/
+build/
+coverage/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp.cjs
+.pnp.loader.mjs
+
+# Prisma
+ops/prisma/dev.db*
