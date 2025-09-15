@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Epiphany AI Art Studio — Home</title>
   <link rel="stylesheet" href="styles.css">
-  <!-- Fonts: modern sans + script-ish display (close to logo vibe) -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Satisfy&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,700;1,700&family=Metal+Mania&family=Poppins:wght@400;500;600&family=Satisfy&display=swap" rel="stylesheet">
-  <!-- Inline splash CSS (unchanged timings) -->
+
+  <!-- Fonts: Poppins (UI), Satisfy (logo-ish), Merriweather (academic), Metal Mania (heavy metal) -->
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,700;1,700&family=Metal+Mania&family=Poppins:wght@400;500;600&family=Satisfy&display=swap" rel="stylesheet">
+
+  <!-- Inline splash CSS -->
   <style>
     .splash{position:fixed;inset:0;background:#000;display:grid;place-items:center;z-index:9999}
     .splash-logo{width:80vw;height:auto;opacity:0}
@@ -17,24 +18,83 @@
     .splash.fade .splash-veil{opacity:0}
     .splash.done{opacity:0;transition:opacity .3s ease;pointer-events:none}
     @media (prefers-reduced-motion:reduce){.splash-veil{transition:none}.splash.done{transition:none}}
+
+    /* Header logo & spacing */
     .brand-logo{height:36px;width:auto;object-fit:contain}
     .brand{min-width:220px}
+
+    /* ---- Mode Slider (Safe ↔ Research ↔ NSFW) ---- */
+    .mode-slider{
+      display:grid; align-items:center; gap:6px;
+      grid-template-rows:auto auto; grid-template-columns:1fr;
+      min-width:340px;
+    }
+    .mode-labels{
+      display:flex; justify-content:space-between; align-items:baseline;
+    }
+    .mode-labels .lbl{
+      background:transparent; border:none; color:#cfcfe6; cursor:pointer;
+      padding:0; margin:0; opacity:.8; transition:opacity .15s, text-shadow .2s;
+      font-weight:600; letter-spacing:.2px;
+    }
+    .mode-labels .safe{ font-family:Poppins, sans-serif; }
+    .mode-labels .research{ font-family:"Merriweather", serif; font-style:italic; }
+    .mode-labels .nsfw{ font-family:"Metal Mania", cursive; color: var(--accent1);
+      text-shadow: 0 0 10px rgba(255,0,122,.55); }
+
+    /* highlight active label */
+    .mode-slider[data-mode="0"] .lbl.safe,
+    .mode-slider[data-mode="1"] .lbl.research,
+    .mode-slider[data-mode="2"] .lbl.nsfw{ opacity:1; text-shadow: 0 0 12px rgba(122,0,255,.35); }
+    .mode-slider[data-mode="2"] .lbl.nsfw{ text-shadow: 0 0 12px rgba(255,0,122,.8), 0 0 24px rgba(255,106,0,.5); }
+
+    .mode-slider .range{
+      -webkit-appearance:none; appearance:none; width:100%;
+      height:10px; border-radius:999px; outline:none; border:1px solid var(--border);
+      background: linear-gradient(90deg,
+        #6bd17d 0%, #6bd17d 33.33%,
+        #f0b153 33.33%, #f0b153 66.66%,
+        var(--accent1) 66.66%, var(--accent1) 100%);
+      box-shadow: inset 0 0 12px rgba(0,0,0,.45);
+      position:relative;
+    }
+    .mode-slider .range::-webkit-slider-thumb{
+      -webkit-appearance:none; appearance:none;
+      width:22px; height:22px; border-radius:50%;
+      background:linear-gradient(90deg, var(--accent1), var(--accent2), var(--accent3));
+      border:1px solid #3a3a40; box-shadow:0 6px 16px rgba(0,0,0,.6); cursor:pointer; margin-top:-6px;
+    }
+    .mode-slider .range::-moz-range-thumb{
+      width:22px; height:22px; border-radius:50%;
+      background:linear-gradient(90deg, var(--accent1), var(--accent2), var(--accent3));
+      border:1px solid #3a3a40; box-shadow:0 6px 16px rgba(0,0,0,.6); cursor:pointer;
+    }
+
+    .mode-slider .ticks{ position:relative; height:8px; margin-top:2px; }
+    .mode-slider .ticks span{ position:absolute; top:0; width:2px; height:8px; background:#3a3a40; opacity:.8; }
+    .mode-slider .ticks span:nth-child(1){ left:0%; }
+    .mode-slider .ticks span:nth-child(2){ left:50%; transform:translateX(-50%); }
+    .mode-slider .ticks span:nth-child(3){ left:100%; transform:translateX(-100%); }
+
+    /* subtle glow per state */
+    .mode-slider[data-mode="0"] .range{ box-shadow: inset 0 0 12px rgba(0,0,0,.45), 0 0 0 2px rgba(107,209,125,.18); }
+    .mode-slider[data-mode="1"] .range{ box-shadow: inset 0 0 12px rgba(0,0,0,.45), 0 0 0 2px rgba(240,177,83,.18); }
+    .mode-slider[data-mode="2"] .range{ box-shadow: inset 0 0 12px rgba(0,0,0,.45), 0 0 0 2px rgba(255,0,122,.25); }
   </style>
 </head>
 <body class="theme-dark">
 
   <!-- Splash Overlay (stays in index.html; no redirect loops) -->
-  <div id="splash" class="splash">
+  <div id="splash" class="splash" aria-hidden="true">
     <img src="epiphany.gif" alt="Epiphany" class="splash-logo" />
     <div class="splash-veil"></div>
   </div>
 
   <header class="topbar">
     <div class="brand">
-      <img src="epiphany.gif" alt="Epiphany Logo" class="brand-logo">
-      <span class="brand-name"></span>
+      <img src="epiphany.gif" alt="Epiphany AI Art Studio" class="brand-logo">
     </div>
-    <nav class="menubar">
+    <nav class="menubar" aria-label="Main menu">
       <ul>
         <li>File</li><li>Edit</li><li>Image</li><li>Layer</li><li>Select</li>
         <li>Filter</li><li>View</li><li>Window</li><li>Help</li>
@@ -42,105 +102,111 @@
     </nav>
   </header>
 
-<main class="workspace">
-  <!-- Left toolbar (aesthetic) -->
-  <aside class="tools">
-    <button class="tool" title="Move (V)"><svg viewBox="0 0 24 24"><path d="M12 2l4 6h-3v8h-2V8H8l4-6zM4 14h4v2H4v4H2v-4H-2v-2h4v-4h2v4z"/></svg></button>
-    <button class="tool" title="Marquee (M)"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" stroke="currentColor" fill="none" stroke-dasharray="2 2"/></svg></button>
-    <button class="tool" title="Lasso (L)"><svg viewBox="0 0 24 24"><path d="M5 7c4-4 14 0 12 5s-10 6-12 3 2-4 6-3" fill="none" stroke="currentColor"/></svg></button>
-    <button class="tool" title="Brush (B)"><svg viewBox="0 0 24 24"><path d="M18 3l3 3-9 9H9V12l9-9zM7 14c1 0 2 1 2 2 0 2-2 4-4 4-1 0-2-1-2-2 0-2 2-4 4-4z"/></svg></button>
-    <button class="tool" title="Eraser (E)"><svg viewBox="0 0 24 24"><path d="M16 3l5 5-9 9H7L2 12l9-9h5zM7 17h15v2H7z"/></svg></button>
-    <button class="tool" title="Gradient (G)">
-      <svg viewBox="0 0 24 24"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#FF007A"/><stop offset="50%" stop-color="#7A00FF"/><stop offset="100%" stop-color="#FF6A00"/></linearGradient></defs><rect x="4" y="4" width="16" height="16" fill="url(#g)" stroke="currentColor"/></svg>
-    </button>
-    <button class="tool" title="Text (T)"><svg viewBox="0 0 24 24"><path d="M4 5h16v2h-7v12h-2V7H4z"/></svg></button>
-    <button class="tool" title="Zoom (Z)"><svg viewBox="0 0 24 24"><path d="M10 18a8 8 0 1 1 5.3-14.1L22 10.6l-1.4 1.4-6.7-6.7A6 6 0 1 0 10 16v2z"/></svg></button>
-  </aside>
+  <main class="workspace">
+    <!-- Left toolbar (aesthetic) -->
+    <aside class="tools">
+      <button class="tool" title="Move (V)"><svg viewBox="0 0 24 24"><path d="M12 2l4 6h-3v8h-2V8H8l4-6zM4 14h4v2H4v4H2v-4H-2v-2h4v-4h2v4z"/></svg></button>
+      <button class="tool" title="Marquee (M)"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" stroke="currentColor" fill="none" stroke-dasharray="2 2"/></svg></button>
+      <button class="tool" title="Lasso (L)"><svg viewBox="0 0 24 24"><path d="M5 7c4-4 14 0 12 5s-10 6-12 3 2-4 6-3" fill="none" stroke="currentColor"/></svg></button>
+      <button class="tool" title="Brush (B)"><svg viewBox="0 0 24 24"><path d="M18 3l3 3-9 9H9V12l9-9zM7 14c1 0 2 1 2 2 0 2-2 4-4 4-1 0-2-1-2-2 0-2 2-4 4-4z"/></svg></button>
+      <button class="tool" title="Eraser (E)"><svg viewBox="0 0 24 24"><path d="M16 3l5 5-9 9H7L2 12l9-9h5zM7 17h15v2H7z"/></svg></button>
+      <button class="tool" title="Gradient (G)">
+        <svg viewBox="0 0 24 24"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#FF007A"/><stop offset="50%" stop-color="#7A00FF"/><stop offset="100%" stop-color="#FF6A00"/></linearGradient></defs><rect x="4" y="4" width="16" height="16" fill="url(#g)" stroke="currentColor"/></svg>
+      </button>
+      <button class="tool" title="Text (T)"><svg viewBox="0 0 24 24"><path d="M4 5h16v2h-7v12h-2V7H4z"/></svg></button>
+      <button class="tool" title="Zoom (Z)"><svg viewBox="0 0 24 24"><path d="M10 18a8 8 0 1 1 5.3-14.1L22 10.6l-1.4 1.4-6.7-6.7A6 6 0 1 0 10 16v2z"/></svg></button>
+    </aside>
 
-  <!-- Center: Image Generation Panel -->
-  <section class="gen-panel">
-    <div class="panel-header">
-      <h2 class="logo-script">Create</h2>
-      <div class="nsfw-toggle">
-        <input id="nsfw" type="checkbox">
-        <label for="nsfw" class="neon">NSFW</label>
-      </div>
-    </div>
+    <!-- Center: Image Generation Panel -->
+    <section class="gen-panel">
+      <div class="panel-header">
+        <h2 class="logo-script">Create</h2>
 
-    <label class="field-label">Prompt</label>
-    <textarea class="prompt" rows="5" placeholder="Describe the image you want… e.g., 'cinematic portrait, rim lighting, neon city at night'"></textarea>
+        <!-- Mode Slider: Safe (0) — Research (1) — NSFW (2) -->
+        <div class="mode-slider" data-mode="0">
+          <div class="mode-labels">
+            <button type="button" class="lbl safe" data-set="0">Safe</button>
+            <button type="button" class="lbl research" data-set="1">Research</button>
+            <button type="button" class="lbl nsfw" data-set="2">NSFW</button>
+          </div>
+          <input id="modeRange" class="range" type="range" min="0" max="2" step="1" value="0" />
+          <div class="ticks"><span></span><span></span><span></span></div>
+        </div>
+      </div>
 
-    <div class="grid-2">
-      <div>
-        <label class="field-label">Style Preset</label>
-        <select class="select">
-          <option>— None —</option>
-          <option>Cinematic</option>
-          <option>Noir</option>
-          <option>Watercolor</option>
-          <option>Low Poly</option>
-          <option>Poster Art</option>
-        </select>
-      </div>
-      <div>
-        <label class="field-label">Aspect Ratio</label>
-        <select class="select">
-          <option>1:1 (1024×1024)</option>
-          <option>16:9</option>
-          <option>9:16</option>
-          <option>3:2</option>
-          <option>2:3</option>
-        </select>
-      </div>
-    </div>
+      <label class="field-label">Prompt</label>
+      <textarea class="prompt" rows="5" placeholder="Describe the image you want… e.g., 'cinematic portrait, rim lighting, neon city at night'"></textarea>
 
-    <div class="grid-3">
-      <div>
-        <label class="field-label">Steps</label>
-        <input type="number" class="input" value="28" min="4" max="80">
+      <div class="grid-2">
+        <div>
+          <label class="field-label">Style Preset</label>
+          <select class="select">
+            <option>— None —</option>
+            <option>Cinematic</option>
+            <option>Noir</option>
+            <option>Watercolor</option>
+            <option>Low Poly</option>
+            <option>Poster Art</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">Aspect Ratio</label>
+          <select class="select">
+            <option>1:1 (1024×1024)</option>
+            <option>16:9</option>
+            <option>9:16</option>
+            <option>3:2</option>
+            <option>2:3</option>
+          </select>
+        </div>
       </div>
-      <div>
-        <label class="field-label">CFG</label>
-        <input type="number" class="input" value="6.5" min="1" max="14" step="0.5">
-      </div>
-      <div>
-        <label class="field-label">Seed</label>
-        <input type="number" class="input" placeholder="random">
-      </div>
-    </div>
 
-    <div class="actions">
-      <button class="btn-gradient">Generate</button>
-      <button class="btn-ghost">Enhance Prompt</button>
-      <button class="btn-ghost">Randomize Seed</button>
-    </div>
-  </section>
-
-  <!-- Right: Result & History -->
-  <aside class="result-panel">
-    <div class="panel card">
-      <div class="panel-title">Result</div>
-      <div class="panel-body result-body">
-        <div class="result-placeholder">Your image will appear here</div>
-        <!-- <img class="result-img" src="..." alt=""> -->
+      <div class="grid-3">
+        <div>
+          <label class="field-label">Steps</label>
+          <input type="number" class="input" value="28" min="4" max="80">
+        </div>
+        <div>
+          <label class="field-label">CFG</label>
+          <input type="number" class="input" value="6.5" min="1" max="14" step="0.5">
+        </div>
+        <div>
+          <label class="field-label">Seed</label>
+          <input type="number" class="input" placeholder="random">
+        </div>
       </div>
-    </div>
 
-    <div class="panel card">
-      <div class="panel-title">History</div>
-      <div class="panel-body">
-        <ul class="history-list">
-          <li class="history-item">No generations yet</li>
-        </ul>
+      <div class="actions">
+        <button class="btn-gradient">Generate</button>
+        <button class="btn-ghost">Enhance Prompt</button>
+        <button class="btn-ghost">Randomize Seed</button>
       </div>
-    </div>
-  </aside>
-</main>
+    </section>
+
+    <!-- Right: Result & History -->
+    <aside class="result-panel">
+      <div class="panel card">
+        <div class="panel-title">Result</div>
+        <div class="panel-body result-body">
+          <div class="result-placeholder">Your image will appear here</div>
+          <!-- <img class="result-img" src="..." alt=""> -->
+        </div>
+      </div>
+
+      <div class="panel card">
+        <div class="panel-title">History</div>
+        <div class="panel-body">
+          <ul class="history-list">
+            <li class="history-item">No generations yet</li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+  </main>
 
   <!-- Splash timing script (immediate 3s fade-in, 3s hold) -->
   <script>
-    // Show splash every load; set to true to only show once per session
-    const once = false;
+    const once = false; // set true to show only once per session
 
     (function runSplash(){
       const splash = document.getElementById('splash');
@@ -156,12 +222,31 @@
       splash.classList.add('show');
       requestAnimationFrame(() => splash.classList.add('fade'));
 
-      // Keep at full brightness for 3 more seconds (total ~6s), then remove overlay
+      // Hold full brightness for 3s (3–6s), then remove overlay
       setTimeout(() => {
         splash.classList.add('done');
-        setTimeout(() => splash.remove(), 350); // tiny fade-out
+        setTimeout(() => splash.remove(), 350);
       }, 6000);
     })();
+  </script>
+
+  <!-- Mode slider wiring -->
+  <script>
+    const modeSlider = document.querySelector('.mode-slider');
+    const modeRange  = document.getElementById('modeRange');
+    const modeBtns   = document.querySelectorAll('.mode-labels .lbl');
+
+    function setMode(v){
+      const n = Math.max(0, Math.min(2, parseInt(v,10) || 0));
+      modeRange.value = String(n);
+      modeSlider.setAttribute('data-mode', String(n));
+      // TODO: hook this into your generation payload:
+      // window.generationMode = n; // 0=safe, 1=research, 2=nsfw
+    }
+
+    modeRange.addEventListener('input', e => setMode(e.target.value));
+    modeBtns.forEach(b => b.addEventListener('click', () => setMode(b.dataset.set)));
+    setMode(modeRange.value); // init
   </script>
 </body>
 </html>
