@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Epiphany AI Art Studio — Splash</title>
+  <link rel="preload" as="image" href="epiphany.gif">
+  <style>
+    :root{ --bg:#000; }
+    html,body{ height:100%; margin:0; background:var(--bg); color:#fff; }
+    .wrap{ position:relative; display:grid; place-items:center; height:100%; width:100%; overflow:hidden; background:#000; }
+    .logo{ width:80vw; height:auto; opacity:0; }
+    .veil{ position:absolute; inset:0; background:#000; opacity:0.99; pointer-events:none; transition:opacity 2s ease; }
+    .show .logo{ opacity:1; }
+    .fade .veil{ opacity:0; }
+  </style>
+</head>
+<body>
+  <div class="wrap" id="wrap">
+    <img class="logo" src="epiphany.gif" alt="Epiphany AI Art Studio">
+    <div class="veil" id="veil"></div>
+  </div>
+  <script>
+    // 0–1s black; 1–3s fade-in; 3–6s full brightness; then redirect to index.html
+    const wrap = document.getElementById('wrap');
+    setTimeout(()=>{
+      wrap.classList.add('show');
+      requestAnimationFrame(()=>wrap.classList.add('fade'));
+    }, 1000);
+    setTimeout(()=>{ window.location.href = 'index.html'; }, 6000);
+  </script>
+</body>
+</html>

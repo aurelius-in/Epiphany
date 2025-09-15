@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Epiphany AI Art Studio — Home</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-dark">
+  <header class="topbar">
+    <div class="brand">
+      <img src="epiphany.gif" alt="Epiphany Logo" class="brand-logo">
+      <span class="brand-name">Epiphany AI Art Studio</span>
+    </div>
+    <nav class="menubar">
+      <ul>
+        <li>File</li><li>Edit</li><li>Image</li><li>Layer</li><li>Select</li>
+        <li>Filter</li><li>View</li><li>Window</li><li>Help</li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="workspace">
+    <aside class="tools">
+      <button class="tool" title="Move (V)">
+        <svg viewBox="0 0 24 24"><path d="M12 2l4 6h-3v8h-2V8H8l4-6zM4 14h4v2H4v4H2v-4H-2v-2h4v-4h2v4z" /></svg>
+      </button>
+      <button class="tool" title="Marquee (M)">
+        <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" stroke="currentColor" fill="none" stroke-dasharray="2 2"/></svg>
+      </button>
+      <button class="tool" title="Lasso (L)">
+        <svg viewBox="0 0 24 24"><path d="M5 7c4-4 14 0 12 5s-10 6-12 3 2-4 6-3" fill="none" stroke="currentColor"/></svg>
+      </button>
+      <button class="tool" title="Brush (B)">
+        <svg viewBox="0 0 24 24"><path d="M18 3l3 3-9 9H9V12l9-9zM7 14c1 0 2 1 2 2 0 2-2 4-4 4-1 0-2-1-2-2 0-2 2-4 4-4z" /></svg>
+      </button>
+      <button class="tool" title="Eraser (E)">
+        <svg viewBox="0 0 24 24"><path d="M16 3l5 5-9 9H7L2 12l9-9h5zM7 17h15v2H7z"/></svg>
+      </button>
+      <button class="tool" title="Gradient (G)">
+        <svg viewBox="0 0 24 24"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#FF007A"/><stop offset="50%" stop-color="#7A00FF"/><stop offset="100%" stop-color="#FF6A00"/></linearGradient></defs><rect x="4" y="4" width="16" height="16" fill="url(#g)" stroke="currentColor" /></svg>
+      </button>
+      <button class="tool" title="Text (T)">
+        <svg viewBox="0 0 24 24"><path d="M4 5h16v2h-7v12h-2V7H4z"/></svg>
+      </button>
+      <button class="tool" title="Zoom (Z)">
+        <svg viewBox="0 0 24 24"><path d="M10 18a8 8 0 1 1 5.3-14.1L22 10.6l-1.4 1.4-6.7-6.7A6 6 0 1 0 10 16v2z"/></svg>
+      </button>
+    </aside>
+
+    <section class="canvas-area">
+      <div class="canvas-title">Untitled-1 @ 100%</div>
+      <div class="canvas-surface">
+        <div class="checker"></div>
+      </div>
+      <div class="statusbar">W: 1024px  H: 1024px  |  RGB  |  8 bit</div>
+    </section>
+
+    <aside class="panels">
+      <div class="panel">
+        <div class="panel-title">Layers</div>
+        <div class="panel-body">
+          <div class="layer-item active">Layer 1</div>
+          <div class="layer-item">Background</div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Properties</div>
+        <div class="panel-body">
+          <label>Opacity</label>
+          <input type="range" min="0" max="100" value="100">
+          <label>Blend</label>
+          <select><option>Normal</option><option>Multiply</option><option>Screen</option></select>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">History</div>
+        <div class="panel-body">
+          <ol class="history">
+            <li>New</li>
+            <li>Import</li>
+          </ol>
+        </div>
+      </div>
+    </aside>
+  </main>
+</body>
+</html>

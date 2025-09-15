@@ -1,0 +1,81 @@
+/* Epiphany AI Art Studio – minimal Photoshop-like skin */
+:root{
+  --bg:#000;
+  --panel:#1b1b1b;
+  --panel-2:#151515;
+  --border:#2a2a2a;
+  --text:#d9d9d9;
+  --muted:#9a9a9a;
+  --accent1:#FF007A;
+  --accent2:#7A00FF;
+  --accent3:#FF6A00;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body.theme-dark{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font:14px/1.4 system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+.topbar{
+  height:42px; display:flex; align-items:center; justify-content:space-between;
+  padding:0 12px;
+  background:linear-gradient(180deg, #0c0c0c, #0a0a0a);
+  border-bottom:1px solid var(--border);
+}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand-logo{height:200px;width:auto;object-fit:contain;} /* 200px tall */
+.brand-name{font-weight:600;letter-spacing:.2px;opacity:.9}
+.menubar ul{display:flex;gap:14px;list-style:none;margin:0;padding:0;color:var(--muted)}
+.menubar li{cursor:default}
+.workspace{
+  display:grid; grid-template-columns: 64px 1fr 320px; grid-template-rows: 1fr;
+  height:calc(100vh - 42px);
+}
+.tools{
+  background:var(--panel); border-right:1px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;padding:8px;gap:8px;
+}
+.tool{
+  width:40px;height:40px; display:grid;place-items:center;
+  background:var(--panel-2); border:1px solid var(--border);
+  border-radius:6px; color:#cfcfcf; cursor:pointer;
+  transition:transform .06s ease, box-shadow .12s ease;
+}
+.tool:hover{box-shadow:0 0 0 1px #444, 0 0 12px rgba(255,255,255,.05)}
+.tool:active{transform:scale(.98)}
+.tool svg{width:22px;height:22px;fill:currentColor;stroke:currentColor;stroke-width:1}
+.canvas-area{
+  display:flex;flex-direction:column;
+  background:radial-gradient(1200px 800px at 50% 40%, #0c0c0c, #090909 60%, #070707 100%);
+}
+.canvas-title{height:36px; display:flex; align-items:center; padding:0 12px; color:var(--muted); border-bottom:1px solid var(--border);}
+.canvas-surface{flex:1; display:grid; place-items:center; padding:24px;}
+.checker{
+  width:70%; aspect-ratio:1 / 1;
+  background-image:
+    linear-gradient(45deg, #2a2a2a 25%, transparent 25%),
+    linear-gradient(-45deg, #2a2a2a 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #2a2a2a 75%),
+    linear-gradient(-45deg, transparent 75%, #2a2a2a 75%);
+  background-size:20px 20px;
+  background-position:0 0, 0 10px, 10px -10px, -10px 0;
+  border:1px solid var(--border);
+  box-shadow:0 10px 50px rgba(0,0,0,.5);
+}
+.panels{
+  background:var(--panel); border-left:1px solid var(--border);
+  padding:8px; display:flex;flex-direction:column;gap:8px; overflow:auto;
+}
+.panel{ background:var(--panel-2); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.panel-title{ height:32px; display:flex; align-items:center; padding:0 10px; color:#cfcfcf;
+  background:linear-gradient(180deg, #141414, #121212); border-bottom:1px solid var(--border); }
+.panel-body{padding:10px; color:#cfcfcf}
+.layer-item{padding:6px 8px;border-radius:6px;border:1px solid transparent}
+.layer-item.active{border-color:#3a3a3a;background:#101010}
+.statusbar{height:28px; display:flex; align-items:center; padding:0 12px; color:var(--muted); border-top:1px solid var(--border);}
+.btn-gradient{
+  background:linear-gradient(90deg, var(--accent1), var(--accent2), var(--accent3));
+  color:#fff; border:none; border-radius:10px; padding:8px 14px;
+}
