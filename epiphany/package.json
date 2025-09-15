@@ -1,0 +1,22 @@
+{
+  "name": "epiphany",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.0.0",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*",
+    "infra/*",
+    "ops/*",
+    "assets/*"
+  ],
+  "scripts": {
+    "build": "pnpm -r run build",
+    "dev": "pnpm -r --filter ./services/api run dev",
+    "lint": "pnpm -r run lint",
+    "format": "pnpm -r run format"
+  }
+}
+
+
