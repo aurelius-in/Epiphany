@@ -16,6 +16,13 @@ Note: Root static files were moved to `apps/web/public/`. Use that folder for UI
 
 ---
 
+## Quick start (compose)
+- Build and start: `make up`
+- Create buckets (first time): `make buckets` (requires `mc`)
+- Tail logs: `make logs`
+
+---
+
 ## What you can do
 - Text→Image (SDXL base/refiner), Img2Img, Inpainting
 - ControlNet (canny, depth, pose)
