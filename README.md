@@ -1,7 +1,5 @@
 
-![Epiphany Logo](epiphany.gif)
-
-<a href='https://aurelius-in.github.io/Epiphany/'> View UI </a>
+![Epiphany Preview](epiphany-preview.gif)
 
 **Epiphany AI Art Studio** is a self-hosted image‑generation stack powered by SDXL and ControlNet with a Next.js UI and a FastAPI GPU worker, featuring prompt enhancement, style presets, txt2img/img2img/inpainting, Safe vs Research modes, Redis jobs, S3 storage, and audit‑ready logs.
 
