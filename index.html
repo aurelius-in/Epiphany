@@ -23,68 +23,33 @@
     .brand-logo{height:36px;width:auto;object-fit:contain}
     .brand{min-width:220px}
 
-    /* ---- Mode Slider (Safe ↔ Research ↔ NSFW) ---- */
-    .mode-slider{
-      display:grid; align-items:center; gap:6px;
-      grid-template-rows:auto auto; grid-template-columns:1fr;
-      min-width:340px;
-    }
-    .mode-labels{
-      display:flex; justify-content:space-between; align-items:baseline;
-    }
-    .mode-labels .lbl{
-      background:transparent; border:none; color:#cfcfe6; cursor:pointer;
-      padding:0; margin:0; opacity:.8; transition:opacity .15s, text-shadow .2s;
-      font-weight:600; letter-spacing:.2px;
-    }
-    .mode-labels .safe{ font-family:Poppins, sans-serif; }
-    .mode-labels .research{ font-family:"Merriweather", serif; font-style:italic; }
-    .mode-labels .nsfw{ font-family:"Metal Mania", cursive; color: var(--accent1);
-      text-shadow: 0 0 10px rgba(255,0,122,.55); }
-
-    /* highlight active label */
+    /* Mode Slider (Safe ↔ Research ↔ NSFW) */
+    .mode-slider{display:grid;align-items:center;gap:6px;grid-template-rows:auto auto;min-width:340px}
+    .mode-labels{display:flex;justify-content:space-between;align-items:baseline}
+    .mode-labels .lbl{background:transparent;border:none;color:#cfcfe6;cursor:pointer;padding:0;margin:0;opacity:.8;transition:opacity .15s,text-shadow .2s;font-weight:600;letter-spacing:.2px}
+    .mode-labels .safe{font-family:Poppins,sans-serif}
+    .mode-labels .research{font-family:"Merriweather",serif;font-style:italic}
+    .mode-labels .nsfw{font-family:"Metal Mania",cursive;color:var(--accent1);text-shadow:0 0 10px rgba(255,0,122,.55)}
     .mode-slider[data-mode="0"] .lbl.safe,
     .mode-slider[data-mode="1"] .lbl.research,
-    .mode-slider[data-mode="2"] .lbl.nsfw{ opacity:1; text-shadow: 0 0 12px rgba(122,0,255,.35); }
-    .mode-slider[data-mode="2"] .lbl.nsfw{ text-shadow: 0 0 12px rgba(255,0,122,.8), 0 0 24px rgba(255,106,0,.5); }
-
-    .mode-slider .range{
-      -webkit-appearance:none; appearance:none; width:100%;
-      height:10px; border-radius:999px; outline:none; border:1px solid var(--border);
-      background: linear-gradient(90deg,
-        #6bd17d 0%, #6bd17d 33.33%,
-        #f0b153 33.33%, #f0b153 66.66%,
-        var(--accent1) 66.66%, var(--accent1) 100%);
-      box-shadow: inset 0 0 12px rgba(0,0,0,.45);
-      position:relative;
-    }
-    .mode-slider .range::-webkit-slider-thumb{
-      -webkit-appearance:none; appearance:none;
-      width:22px; height:22px; border-radius:50%;
-      background:linear-gradient(90deg, var(--accent1), var(--accent2), var(--accent3));
-      border:1px solid #3a3a40; box-shadow:0 6px 16px rgba(0,0,0,.6); cursor:pointer; margin-top:-6px;
-    }
-    .mode-slider .range::-moz-range-thumb{
-      width:22px; height:22px; border-radius:50%;
-      background:linear-gradient(90deg, var(--accent1), var(--accent2), var(--accent3));
-      border:1px solid #3a3a40; box-shadow:0 6px 16px rgba(0,0,0,.6); cursor:pointer;
-    }
-
-    .mode-slider .ticks{ position:relative; height:8px; margin-top:2px; }
-    .mode-slider .ticks span{ position:absolute; top:0; width:2px; height:8px; background:#3a3a40; opacity:.8; }
-    .mode-slider .ticks span:nth-child(1){ left:0%; }
-    .mode-slider .ticks span:nth-child(2){ left:50%; transform:translateX(-50%); }
-    .mode-slider .ticks span:nth-child(3){ left:100%; transform:translateX(-100%); }
-
-    /* subtle glow per state */
-    .mode-slider[data-mode="0"] .range{ box-shadow: inset 0 0 12px rgba(0,0,0,.45), 0 0 0 2px rgba(107,209,125,.18); }
-    .mode-slider[data-mode="1"] .range{ box-shadow: inset 0 0 12px rgba(0,0,0,.45), 0 0 0 2px rgba(240,177,83,.18); }
-    .mode-slider[data-mode="2"] .range{ box-shadow: inset 0 0 12px rgba(0,0,0,.45), 0 0 0 2px rgba(255,0,122,.25); }
+    .mode-slider[data-mode="2"] .lbl.nsfw{opacity:1;text-shadow:0 0 12px rgba(122,0,255,.35)}
+    .mode-slider[data-mode="2"] .lbl.nsfw{ text-shadow:0 0 12px rgba(255,0,122,.8),0 0 24px rgba(255,106,0,.5)}
+    .mode-slider .range{-webkit-appearance:none;appearance:none;width:100%;height:10px;border-radius:999px;outline:none;border:1px solid var(--border);background:linear-gradient(90deg,#6bd17d 0%,#6bd17d 33.33%,#f0b153 33.33%,#f0b153 66.66%,var(--accent1) 66.66%,var(--accent1) 100%);box-shadow:inset 0 0 12px rgba(0,0,0,.45)}
+    .mode-slider .range::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:linear-gradient(90deg,var(--accent1),var(--accent2),var(--accent3));border:1px solid #3a3a40;box-shadow:0 6px 16px rgba(0,0,0,.6);cursor:pointer;margin-top:-6px}
+    .mode-slider .range::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:linear-gradient(90deg,var(--accent1),var(--accent2),var(--accent3));border:1px solid #3a3a40;box-shadow:0 6px 16px rgba(0,0,0,.6);cursor:pointer}
+    .mode-slider .ticks{position:relative;height:8px;margin-top:2px}
+    .mode-slider .ticks span{position:absolute;top:0;width:2px;height:8px;background:#3a3a40;opacity:.8}
+    .mode-slider .ticks span:nth-child(1){left:0%}
+    .mode-slider .ticks span:nth-child(2){left:50%;transform:translateX(-50%)}
+    .mode-slider .ticks span:nth-child(3){left:100%;transform:translateX(-100%)}
+    .mode-slider[data-mode="0"] .range{box-shadow:inset 0 0 12px rgba(0,0,0,.45),0 0 0 2px rgba(107,209,125,.18)}
+    .mode-slider[data-mode="1"] .range{box-shadow:inset 0 0 12px rgba(0,0,0,.45),0 0 0 2px rgba(240,177,83,.18)}
+    .mode-slider[data-mode="2"] .range{box-shadow:inset 0 0 12px rgba(0,0,0,.45),0 0 0 2px rgba(255,0,122,.25)}
   </style>
 </head>
 <body class="theme-dark">
 
-  <!-- Splash Overlay (stays in index.html; no redirect loops) -->
+  <!-- Splash Overlay -->
   <div id="splash" class="splash" aria-hidden="true">
     <img src="epiphany.gif" alt="Epiphany" class="splash-logo" />
     <div class="splash-veil"></div>
@@ -135,9 +100,10 @@
       </div>
 
       <label class="field-label">Prompt</label>
-      <textarea class="prompt" rows="5" placeholder="Describe the image you want… e.g., 'cinematic portrait, rim lighting, neon city at night'"></textarea>
+      <textarea class="prompt" rows="3" placeholder="Describe the image you want… e.g., 'cinematic portrait, rim lighting, neon city at night'"></textarea>
 
-      <div class="grid-2">
+      <!-- 3-column dropdowns -->
+      <div class="grid-3wide">
         <div>
           <label class="field-label">Style Preset</label>
           <select class="select">
@@ -159,8 +125,18 @@
             <option>2:3</option>
           </select>
         </div>
+        <div>
+          <label class="field-label">Model</label>
+          <select class="select">
+            <option>SDXL Base</option>
+            <option>SDXL Refiner</option>
+            <option>Photoreal XL</option>
+            <option>Anime XL</option>
+          </select>
+        </div>
       </div>
 
+      <!-- Steps / CFG / Seed on one row -->
       <div class="grid-3">
         <div>
           <label class="field-label">Steps</label>
@@ -207,26 +183,14 @@
   <!-- Splash timing script (immediate 3s fade-in, 3s hold) -->
   <script>
     const once = false; // set true to show only once per session
-
     (function runSplash(){
       const splash = document.getElementById('splash');
       if (!splash) return;
-
-      if (once && sessionStorage.getItem('sawSplash') === '1') {
-        splash.remove();
-        return;
-      }
+      if (once && sessionStorage.getItem('sawSplash') === '1') { splash.remove(); return; }
       if (once) sessionStorage.setItem('sawSplash', '1');
-
-      // Start immediately: show logo and begin 3s veil fade (0–3s)
       splash.classList.add('show');
       requestAnimationFrame(() => splash.classList.add('fade'));
-
-      // Hold full brightness for 3s (3–6s), then remove overlay
-      setTimeout(() => {
-        splash.classList.add('done');
-        setTimeout(() => splash.remove(), 350);
-      }, 6000);
+      setTimeout(() => { splash.classList.add('done'); setTimeout(() => splash.remove(), 350); }, 6000);
     })();
   </script>
 
@@ -235,18 +199,15 @@
     const modeSlider = document.querySelector('.mode-slider');
     const modeRange  = document.getElementById('modeRange');
     const modeBtns   = document.querySelectorAll('.mode-labels .lbl');
-
     function setMode(v){
       const n = Math.max(0, Math.min(2, parseInt(v,10) || 0));
       modeRange.value = String(n);
       modeSlider.setAttribute('data-mode', String(n));
-      // TODO: hook this into your generation payload:
       // window.generationMode = n; // 0=safe, 1=research, 2=nsfw
     }
-
     modeRange.addEventListener('input', e => setMode(e.target.value));
     modeBtns.forEach(b => b.addEventListener('click', () => setMode(b.dataset.set)));
-    setMode(modeRange.value); // init
+    setMode(modeRange.value);
   </script>
 </body>
 </html>
