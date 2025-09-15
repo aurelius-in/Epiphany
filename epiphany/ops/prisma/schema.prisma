@@ -1,0 +1,66 @@
+﻿// prisma/schema.prisma
+// Data models for generations, assets, explain, events
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Generation {
+  id             String   @id @default(cuid())
+  kind           String   // "image" | "video"
+  status         String   // "queued" | "running" | "succeeded" | "failed" | "canceled"
+  inputPrompt    String
+  negativePrompt String?
+  mode           Int
+  aspect         String?
+  steps          Int?
+  cfg            Float?
+  seed           BigInt?
+  modelId        String?
+  stylePreset    String?
+  controlnet     Json?
+  initImageUrl   String?
+  maskUrl        String?
+  outputUrl      String?
+  previewUrls    String[]
+  durationMs     Int?
+  modelHash      String?
+  safety         Json?
+  error          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([status])
+}
+
+model Asset {
+  id      String @id @default(cuid())
+  url     String
+  kind    String
+  mime    String
+  width   Int?
+  height  Int?
+  bytes   Int?
+  sha256  String?
+}
+
+model Explain {
+  id           String  @id @default(cuid())
+  generationId String
+  tokenScores  Json
+  heatmapUrls  String[]
+}
+
+model Event {
+  id           String   @id @default(cuid())
+  generationId String
+  type         String
+  payload      Json
+  createdAt    DateTime @default(now())
+}
