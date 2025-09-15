@@ -1,6 +1,6 @@
 import { Worker, Job } from 'bullmq'
 import IORedis from 'ioredis'
-import { postJson } from './http'
+import { postJson, getJson } from './http'
 import { prisma } from './db'
 
 const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379')
@@ -45,8 +45,10 @@ async function processEdit(job: Job) {
 }
 
 async function processExplain(job: Job) {
-	const resp = await postJson<any>('http://localhost:8004/attention/placeholder', job.data)
-	return resp
+	const attn = await getJson<any>('http://localhost:8004/attention/' + (job.data?.generationId || 'x'))
+	const tokens = await getJson<any>('http://localhost:8004/tokens/' + (job.data?.generationId || 'x'))
+	const explain = await prisma.explain.create({ data: { generationId: job.data?.generationId || 'x', tokenScores: tokens.get('token_scores', []), heatmapUrls: attn.get('heatmap_urls', []) } as any })
+	return { explain_id: explain.id }
 }
 
 export function startWorkers() {
