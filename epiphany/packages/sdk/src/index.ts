@@ -74,8 +74,8 @@ export async function generateVideo(baseUrl: string, apiKey: string, req: z.infe
 	return z.object({ id: z.string() }).parse(j)
 }
 
-export async function listGenerations(baseUrl: string, apiKey: string) {
-	const r = await fetch(`${baseUrl}/v1/generations`, { headers: headers(apiKey) })
+export async function listGenerations(baseUrl: string, apiKey: string, page = 1, limit = 50) {
+	const r = await fetch(`${baseUrl}/v1/generations?page=${page}&limit=${limit}`, { headers: headers(apiKey) })
 	const j = await r.json()
-	return z.object({ items: z.array(z.any()) }).parse(j)
+	return z.object({ items: z.array(z.any()), nextPage: z.number().optional() }).parse(j)
 }

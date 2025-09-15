@@ -137,9 +137,12 @@ r.get('/jobs/:id', async (req, res) => {
 	res.json({ id, status: state, progress, outputUrl: result?.output_url, previewUrls: result?.preview_urls, explainId: result?.explain_id })
 })
 
-r.get('/generations', async (_req, res) => {
-	const items = await prisma.generation.findMany({ orderBy: { createdAt: 'desc' }, take: 50 })
-	res.json({ items })
+r.get('/generations', async (req, res) => {
+	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
+	const limit = Math.max(1, Math.min(100, parseInt(String(req.query.limit || '50')) || 50))
+	const items = await prisma.generation.findMany({ orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
+	const nextPage = items.length === limit ? page + 1 : undefined
+	res.json({ items, nextPage })
 })
 
 r.get('/explain/:id', async (req, res) => {
