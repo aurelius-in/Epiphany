@@ -1,9 +1,10 @@
-import { Worker, Job } from 'bullmq'
+import { Worker, Job, Queue } from 'bullmq'
 import IORedis from 'ioredis'
 import { postJson, getJson } from './http'
 import { prisma } from './db'
 
 const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379')
+const explainQueue = new Queue('explain', { connection })
 
 async function processGenerateImage(job: Job) {
 	await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'running' } })
@@ -14,7 +15,9 @@ async function processGenerateImage(job: Job) {
 	if (resp.output_url) {
 		await prisma.asset.create({ data: { url: resp.output_url, kind: 'image', mime: 'image/png' } })
 	}
-	return resp
+	// enqueue explain job
+	const ex = await explainQueue.add('explain', { generationId: job.data.generationId }, { removeOnComplete: true, removeOnFail: true })
+	return { ...resp, explain_id: ex.id }
 }
 
 async function processGenerateVideo(job: Job) {
@@ -47,7 +50,9 @@ async function processEdit(job: Job) {
 async function processExplain(job: Job) {
 	const attn = await getJson<any>('http://localhost:8004/attention/' + (job.data?.generationId || 'x'))
 	const tokens = await getJson<any>('http://localhost:8004/tokens/' + (job.data?.generationId || 'x'))
-	const explain = await prisma.explain.create({ data: { generationId: job.data?.generationId || 'x', tokenScores: tokens.get('token_scores', []), heatmapUrls: attn.get('heatmap_urls', []) } as any })
+	const tokenScores = (tokens && (tokens.token_scores ?? (tokens as any)['token_scores'])) || []
+	const heatmapUrls = (attn && (attn.heatmap_urls ?? (attn as any)['heatmap_urls'])) || []
+	const explain = await prisma.explain.create({ data: { generationId: job.data?.generationId || 'x', tokenScores, heatmapUrls } as any })
 	return { explain_id: explain.id }
 }
 
