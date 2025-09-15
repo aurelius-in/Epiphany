@@ -134,7 +134,7 @@ r.get('/jobs/:id', async (req, res) => {
 	const state = await job.getState()
 	const progress = (job.progress as any) || 0
 	const result = (await job.getReturnValue().catch(() => null)) as any
-	res.json({ id, status: state, progress, outputUrl: result?.output_url, previewUrls: result?.preview_urls })
+	res.json({ id, status: state, progress, outputUrl: result?.output_url, previewUrls: result?.preview_urls, explainId: result?.explain_id })
 })
 
 r.get('/generations', async (_req, res) => {
@@ -143,7 +143,12 @@ r.get('/generations', async (_req, res) => {
 })
 
 r.get('/explain/:id', async (req, res) => {
-	res.json({ id: req.params.id, tokenScores: [], heatmapUrls: [] })
+	const id = req.params.id
+	const byId = await prisma.explain.findUnique({ where: { id } }).catch(() => null)
+	if (byId) return res.json({ id: byId.id, tokenScores: byId.tokenScores as any, heatmapUrls: byId.heatmapUrls as any })
+	const byGen = await prisma.explain.findFirst({ where: { generationId: id }, orderBy: { /* latest first */ id: 'desc' as any } }).catch(() => null)
+	if (byGen) return res.json({ id: byGen.id, tokenScores: byGen.tokenScores as any, heatmapUrls: byGen.heatmapUrls as any })
+	return res.status(404).json({ error: 'not_found' })
 })
 
 export const routes = r
