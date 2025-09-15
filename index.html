@@ -8,24 +8,27 @@
 
   <!-- Inline splash CSS -->
   <style>
-  /* Splash overlay */
-  .splash {
-    position: fixed; inset: 0; background:#000;
-    display:grid; place-items:center; z-index: 9999;
-  }
-  .splash-logo { width: 80vw; height: auto; opacity: 0; }          /* hidden at t=0 */
-  .splash-veil {
-    position: absolute; inset: 0; background:#000; opacity: 0.99;  /* 99% black on first frame */
-    pointer-events: none; transition: opacity 3s ease;              /* fade 0–3s */
-  }
-  .splash.show .splash-logo { opacity: 1; }   /* reveal logo immediately */
-  .splash.fade .splash-veil { opacity: 0; }   /* veil fades to 0 over 3s */
-  .splash.done { opacity: 0; transition: opacity .3s ease; pointer-events:none; }
-  @media (prefers-reduced-motion: reduce) {
-    .splash-veil { transition: none; }
-    .splash.done { transition: none; }
-  }
-</style>
+    /* Splash overlay */
+    .splash {
+      position: fixed; inset: 0; background:#000;
+      display:grid; place-items:center; z-index: 9999;
+    }
+    .splash-logo { width: 80vw; height: auto; opacity: 0; }          /* hidden at t=0 */
+    .splash-veil {
+      position: absolute; inset: 0; background:#000; opacity: 0.99;  /* 99% black on first frame */
+      pointer-events: none; transition: opacity 3s ease;              /* fade 0–3s */
+    }
+    .splash.show .splash-logo { opacity: 1; }   /* reveal logo immediately */
+    .splash.fade .splash-veil { opacity: 0; }   /* veil fades to 0 over 3s */
+    .splash.done { opacity: 0; transition: opacity .3s ease; pointer-events:none; }
+    @media (prefers-reduced-motion: reduce) {
+      .splash-veil { transition: none; }
+      .splash.done { transition: none; }
+    }
+
+    /* Header logo size fix (36px) */
+    .brand-logo { height:36px; width:auto; object-fit:contain; }
+  </style>
 </head>
 <body class="theme-dark">
 
@@ -113,9 +116,9 @@
     </aside>
   </main>
 
-  <!-- Splash timing script -->
+  <!-- Splash timing script (immediate 3s fade-in, 3s hold) -->
   <script>
-    // Show only once per session (set to false to always show)
+    // Show splash every load; set to true to only show once per session
     const once = false;
 
     (function runSplash(){
@@ -128,16 +131,14 @@
       }
       if (once) sessionStorage.setItem('sawSplash', '1');
 
-      // 0–1s: full black, logo hidden
-      setTimeout(() => {
-        splash.classList.add('show');               // show logo at t = 1s
-        requestAnimationFrame(() => splash.classList.add('fade')); // fade veil 1–3s
-      }, 1000);
+      // Start immediately: show logo and begin 3s veil fade (0–3s)
+      splash.classList.add('show');
+      requestAnimationFrame(() => splash.classList.add('fade'));
 
-      // 3–6s: full brightness, remove overlay at 6s
+      // Keep at full brightness for 3 more seconds (total ~6s), then remove overlay
       setTimeout(() => {
         splash.classList.add('done');
-        setTimeout(() => splash.remove(), 350);     // let tiny fade finish
+        setTimeout(() => splash.remove(), 350); // tiny fade-out
       }, 6000);
     })();
   </script>
