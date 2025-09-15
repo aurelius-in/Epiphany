@@ -6,6 +6,7 @@ import { getEnv } from './env'
 import { requestId, apiKeyAuth } from './middleware'
 import { routes } from './routes'
 import { healthSummary } from './health'
+import { startWorkers } from './workers'
 
 const env = getEnv()
 const app = express()
@@ -22,5 +23,7 @@ app.get('/v1/health', async (_req, res) => {
 })
 
 app.use('/v1', routes)
+
+startWorkers()
 
 app.listen(env.API_PORT, () => console.log(`[api] listening on :${env.API_PORT}`))
