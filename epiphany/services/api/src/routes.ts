@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { queues } from './queues'
 import { Job } from 'bullmq'
+import { prisma } from './db'
 
 const r = Router()
 
@@ -28,7 +29,29 @@ const genImageSchema = z.object({
 
 r.post('/generate/image', async (req, res) => {
 	const body = genImageSchema.parse(req.body)
-	const job = await queues.generate_image.add('generate', body, { removeOnComplete: true, removeOnFail: true })
+	const generation = await prisma.generation.create({ data: {
+		kind: 'image',
+		status: 'queued',
+		inputPrompt: body.prompt,
+		negativePrompt: body.negativePrompt || null as any,
+		mode: body.mode,
+		aspect: body.aspect || null as any,
+		steps: body.steps || null as any,
+		cfg: body.cfg || null as any,
+		seed: body.seed != null ? BigInt(body.seed) : null as any,
+		modelId: body.modelId || null as any,
+		stylePreset: body.stylePreset || null as any,
+		controlnet: body.controlnet || null as any,
+		initImageUrl: body.initImageUrl || null as any,
+		maskUrl: body.maskUrl || null as any,
+		outputUrl: null as any,
+		previewUrls: [],
+		durationMs: null as any,
+		modelHash: null as any,
+		safety: null as any,
+		error: null as any,
+	} })
+	const job = await queues.generate_image.add('generate', { ...body, generationId: generation.id }, { removeOnComplete: true, removeOnFail: true })
 	res.json({ id: job.id })
 })
 
@@ -45,7 +68,29 @@ const genVideoSchema = z.object({
 
 r.post('/generate/video', async (req, res) => {
 	const body = genVideoSchema.parse(req.body)
-	const job = await queues.generate_video.add('generate', body, { removeOnComplete: true, removeOnFail: true })
+	const generation = await prisma.generation.create({ data: {
+		kind: 'video',
+		status: 'queued',
+		inputPrompt: body.prompt,
+		negativePrompt: null as any,
+		mode: body.mode,
+		aspect: body.resolution || null as any,
+		steps: null as any,
+		cfg: null as any,
+		seed: body.seed != null ? BigInt(body.seed) : null as any,
+		modelId: body.modelId || null as any,
+		stylePreset: null as any,
+		controlnet: null as any,
+		initImageUrl: body.sourceImageUrl || null as any,
+		maskUrl: null as any,
+		outputUrl: null as any,
+		previewUrls: [],
+		durationMs: null as any,
+		modelHash: null as any,
+		safety: null as any,
+		error: null as any,
+	} })
+	const job = await queues.generate_video.add('generate', { ...body, generationId: generation.id }, { removeOnComplete: true, removeOnFail: true })
 	res.json({ id: job.id })
 })
 
@@ -93,7 +138,8 @@ r.get('/jobs/:id', async (req, res) => {
 })
 
 r.get('/generations', async (_req, res) => {
-	res.json({ items: [] })
+	const items = await prisma.generation.findMany({ orderBy: { createdAt: 'desc' }, take: 50 })
+	res.json({ items })
 })
 
 r.get('/explain/:id', async (req, res) => {

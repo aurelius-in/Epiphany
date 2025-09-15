@@ -1,21 +1,46 @@
 import { Worker, Job } from 'bullmq'
 import IORedis from 'ioredis'
 import { postJson } from './http'
+import { prisma } from './db'
 
 const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379')
 
 async function processGenerateImage(job: Job) {
+	await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'running' } })
 	const resp = await postJson<any>('http://localhost:8001/infer/txt2img', job.data)
+	await prisma.generation.update({ where: { id: job.data.generationId }, data: {
+		status: 'succeeded', outputUrl: resp.output_url || null, previewUrls: resp.preview_urls || [], durationMs: resp.duration_ms || null, modelHash: resp.model_hash || null, safety: resp.safety_scores || null,
+	} })
+	if (resp.output_url) {
+		await prisma.asset.create({ data: { url: resp.output_url, kind: 'image', mime: 'image/png' } })
+	}
 	return resp
 }
 
 async function processGenerateVideo(job: Job) {
+	await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'running' } })
 	const resp = await postJson<any>('http://localhost:8002/infer/t2v', job.data)
+	await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'succeeded', outputUrl: resp.output_url || null, durationMs: resp.duration_ms || null, modelHash: resp.model_hash || null } })
+	if (resp.output_url) {
+		await prisma.asset.create({ data: { url: resp.output_url, kind: 'video', mime: 'video/mp4' } })
+	}
 	return resp
 }
 
 async function processEdit(job: Job) {
-	const resp = await postJson<any>('http://localhost:8003/upscale', job.data)
+	const task = String(job.name)
+	const map: Record<string,string> = {
+		'upscale': 'http://localhost:8003/upscale',
+		'restore-face': 'http://localhost:8003/restore-face',
+		'remove-bg': 'http://localhost:8003/remove-bg',
+		'crop': 'http://localhost:8003/crop',
+		'resize': 'http://localhost:8003/resize',
+	}
+	const url = map[task] || 'http://localhost:8003/upscale'
+	const resp = await postJson<any>(url, job.data)
+	if (resp.output_url) {
+		await prisma.asset.create({ data: { url: resp.output_url, kind: 'image', mime: 'image/png' } })
+	}
 	return resp
 }
 
