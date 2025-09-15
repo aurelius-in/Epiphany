@@ -208,6 +208,45 @@
     modeRange.addEventListener('input', e => setMode(e.target.value));
     modeBtns.forEach(b => b.addEventListener('click', () => setMode(b.dataset.set)));
     setMode(modeRange.value);
-  </script>
+
+  
+  // Demo renderer: shows gen-ai.gif in the Result panel and fills meta from the UI
+  function renderDemoResult(){
+    const img   = document.getElementById('resultImg');
+    const meta  = document.getElementById('resultMeta');
+    const ph    = document.querySelector('.result-placeholder');
+
+    // read controls
+    const modeIndex = parseInt(document.getElementById('modeRange').value, 10) || 0;
+    const modeText  = ['Safe','Research','NSFW'][modeIndex];
+    const ar        = document.querySelectorAll('.grid-3wide .select')[1]?.value || '1:1';
+    const steps     = document.querySelector('.grid-3 .input:nth-of-type(1)')?.value
+                   || document.querySelectorAll('.grid-3 .input')[0]?.value || '28';
+    const cfg       = document.querySelectorAll('.grid-3 .input')[1]?.value || '6.5';
+    const seed      = document.querySelectorAll('.grid-3 .input')[2]?.value || 'random';
+
+    // show gif from root
+    img.src = 'gen-ai.gif';
+    img.onload = () => {
+      img.style.display = 'block';
+      ph && (ph.style.display = 'none');
+      meta.style.display = 'flex';
+      document.getElementById('metaMode').textContent = modeText;
+      document.getElementById('metaAR').textContent   = ar;
+      document.getElementById('metaSteps').textContent= steps;
+      document.getElementById('metaCFG').textContent  = cfg;
+      document.getElementById('metaSeed').textContent = seed || 'random';
+    };
+  }
+
+  // Wire the Generate button
+  document.querySelector('.btn-gradient')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    renderDemoResult();
+  });
+
+  // Also show something on first load so the box isn’t empty
+  window.addEventListener('DOMContentLoaded', () => setTimeout(renderDemoResult, 200));
+</script>
 </body>
 </html>
