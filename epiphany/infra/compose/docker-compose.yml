@@ -48,7 +48,17 @@ services:
       dockerfile: services/infer-image/Dockerfile
     environment:
       PORT: ${INFER_IMAGE_PORT}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_REGION: ${S3_REGION}
+      S3_BUCKET: ${S3_BUCKET}
     ports: ["8001:8001"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
     deploy:
       resources:
         reservations:
@@ -63,7 +73,17 @@ services:
       dockerfile: services/infer-video/Dockerfile
     environment:
       PORT: ${INFER_VIDEO_PORT}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_REGION: ${S3_REGION}
+      S3_BUCKET: ${S3_BUCKET}
     ports: ["8002:8002"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
     deploy:
       resources:
         reservations:
@@ -78,6 +98,11 @@ services:
       dockerfile: services/edit/Dockerfile
     environment:
       PORT: ${EDIT_PORT}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_REGION: ${S3_REGION}
+      S3_BUCKET: ${S3_BUCKET}
     ports: ["8003:8003"]
 
   explain:
@@ -86,6 +111,11 @@ services:
       dockerfile: services/explain/Dockerfile
     environment:
       PORT: ${EXPLAIN_PORT}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_REGION: ${S3_REGION}
+      S3_BUCKET: ${S3_BUCKET}
     ports: ["8004:8004"]
 
   web:
