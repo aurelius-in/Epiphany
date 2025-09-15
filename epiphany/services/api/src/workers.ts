@@ -15,8 +15,10 @@ function selectImageEndpoint(data: any): string {
 
 async function processGenerateImage(job: Job) {
 	await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'running' } })
+	await job.updateProgress(10)
 	const url = selectImageEndpoint(job.data)
 	const resp = await postJson<any>(url, job.data)
+	await job.updateProgress(90)
 	await prisma.generation.update({ where: { id: job.data.generationId }, data: {
 		status: 'succeeded', outputUrl: resp.output_url || null, previewUrls: resp.preview_urls || [], durationMs: resp.duration_ms || null, modelHash: resp.model_hash || null, safety: resp.safety_scores || null,
 	} })
@@ -24,20 +26,25 @@ async function processGenerateImage(job: Job) {
 		await prisma.asset.create({ data: { url: resp.output_url, kind: 'image', mime: 'image/png' } })
 	}
 	const ex = await explainQueue.add('explain', { generationId: job.data.generationId }, { removeOnComplete: true, removeOnFail: true })
+	await job.updateProgress(100)
 	return { ...resp, explain_id: ex.id }
 }
 
 async function processGenerateVideo(job: Job) {
 	await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'running' } })
+	await job.updateProgress(10)
 	const resp = await postJson<any>('http://localhost:8002/infer/t2v', job.data)
+	await job.updateProgress(90)
 	await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'succeeded', outputUrl: resp.output_url || null, durationMs: resp.duration_ms || null, modelHash: resp.model_hash || null } })
 	if (resp.output_url) {
 		await prisma.asset.create({ data: { url: resp.output_url, kind: 'video', mime: 'video/mp4' } })
 	}
+	await job.updateProgress(100)
 	return resp
 }
 
 async function processEdit(job: Job) {
+	await job.updateProgress(10)
 	const task = String(job.name)
 	const map: Record<string,string> = {
 		'upscale': 'http://localhost:8003/upscale',
@@ -51,15 +58,18 @@ async function processEdit(job: Job) {
 	if (resp.output_url) {
 		await prisma.asset.create({ data: { url: resp.output_url, kind: 'image', mime: 'image/png' } })
 	}
+	await job.updateProgress(100)
 	return resp
 }
 
 async function processExplain(job: Job) {
+	await job.updateProgress(10)
 	const attn = await getJson<any>('http://localhost:8004/attention/' + (job.data?.generationId || 'x'))
 	const tokens = await getJson<any>('http://localhost:8004/tokens/' + (job.data?.generationId || 'x'))
 	const tokenScores = (tokens && (tokens.token_scores ?? (tokens as any)['token_scores'])) || []
 	const heatmapUrls = (attn && (attn.heatmap_urls ?? (attn as any)['heatmap_urls'])) || []
 	const explain = await prisma.explain.create({ data: { generationId: job.data?.generationId || 'x', tokenScores, heatmapUrls } as any })
+	await job.updateProgress(100)
 	return { explain_id: explain.id }
 }
 
