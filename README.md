@@ -33,6 +33,8 @@ epiphany/
   infra/compose/     # docker-compose for Postgres, Redis, MinIO
   ops/migrations/    # Prisma migrations
 
+```
+
 ```Mermaid
 
 flowchart LR
