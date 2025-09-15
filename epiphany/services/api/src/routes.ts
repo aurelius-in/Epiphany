@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { queues } from './queues'
+import { Job } from 'bullmq'
 
 const r = Router()
 
@@ -79,8 +80,16 @@ r.post('/edit/resize', async (req, res) => {
 })
 
 r.get('/jobs/:id', async (req, res) => {
-	// Placeholder job polling
-	res.json({ id: req.params.id, status: 'queued' })
+	const id = req.params.id
+	async function statusOf(qname: keyof typeof queues): Promise<Job | null> {
+		return queues[qname].getJob(id)
+	}
+	const job = (await statusOf('generate_image')) || (await statusOf('generate_video')) || (await statusOf('edit_image')) || (await statusOf('explain'))
+	if (!job) return res.status(404).json({ error: 'not_found' })
+	const state = await job.getState()
+	const progress = (job.progress as any) || 0
+	const result = (await job.getReturnValue().catch(() => null)) as any
+	res.json({ id, status: state, progress, outputUrl: result?.output_url, previewUrls: result?.preview_urls })
 })
 
 r.get('/generations', async (_req, res) => {
