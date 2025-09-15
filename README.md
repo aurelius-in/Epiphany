@@ -10,6 +10,8 @@ A production‑ready, demo‑friendly AI art studio for images and video.
 - Explainability: attention maps, token attributions, safety scores
 - Infra: Postgres, Redis, MinIO, Docker Compose (GPU via nvidia‑container‑toolkit)
 
+Note: Root static files were moved to `apps/web/public/`. Use that folder for UI assets.
+
 ---
 
 ## What you can do
