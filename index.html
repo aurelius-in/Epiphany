@@ -42,70 +42,100 @@
     </nav>
   </header>
 
-  <main class="workspace">
-    <aside class="tools">
-      <button class="tool" title="Move (V)">
-        <svg viewBox="0 0 24 24"><path d="M12 2l4 6h-3v8h-2V8H8l4-6zM4 14h4v2H4v4H2v-4H-2v-2h4v-4h2v4z" /></svg>
-      </button>
-      <button class="tool" title="Marquee (M)">
-        <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" stroke="currentColor" fill="none" stroke-dasharray="2 2"/></svg>
-      </button>
-      <button class="tool" title="Lasso (L)">
-        <svg viewBox="0 0 24 24"><path d="M5 7c4-4 14 0 12 5s-10 6-12 3 2-4 6-3" fill="none" stroke="currentColor"/></svg>
-      </button>
-      <button class="tool" title="Brush (B)">
-        <svg viewBox="0 0 24 24"><path d="M18 3l3 3-9 9H9V12l9-9zM7 14c1 0 2 1 2 2 0 2-2 4-4 4-1 0-2-1-2-2 0-2 2-4 4-4z" /></svg>
-      </button>
-      <button class="tool" title="Eraser (E)">
-        <svg viewBox="0 0 24 24"><path d="M16 3l5 5-9 9H7L2 12l9-9h5zM7 17h15v2H7z"/></svg>
-      </button>
-      <button class="tool" title="Gradient (G)">
-        <svg viewBox="0 0 24 24"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#FF007A"/><stop offset="50%" stop-color="#7A00FF"/><stop offset="100%" stop-color="#FF6A00"/></linearGradient></defs><rect x="4" y="4" width="16" height="16" fill="url(#g)" stroke="currentColor" /></svg>
-      </button>
-      <button class="tool" title="Text (T)">
-        <svg viewBox="0 0 24 24"><path d="M4 5h16v2h-7v12h-2V7H4z"/></svg>
-      </button>
-      <button class="tool" title="Zoom (Z)">
-        <svg viewBox="0 0 24 24"><path d="M10 18a8 8 0 1 1 5.3-14.1L22 10.6l-1.4 1.4-6.7-6.7A6 6 0 1 0 10 16v2z"/></svg>
-      </button>
-    </aside>
+<main class="workspace">
+  <!-- Left toolbar (aesthetic) -->
+  <aside class="tools">
+    <button class="tool" title="Move (V)"><svg viewBox="0 0 24 24"><path d="M12 2l4 6h-3v8h-2V8H8l4-6zM4 14h4v2H4v4H2v-4H-2v-2h4v-4h2v4z"/></svg></button>
+    <button class="tool" title="Marquee (M)"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" stroke="currentColor" fill="none" stroke-dasharray="2 2"/></svg></button>
+    <button class="tool" title="Lasso (L)"><svg viewBox="0 0 24 24"><path d="M5 7c4-4 14 0 12 5s-10 6-12 3 2-4 6-3" fill="none" stroke="currentColor"/></svg></button>
+    <button class="tool" title="Brush (B)"><svg viewBox="0 0 24 24"><path d="M18 3l3 3-9 9H9V12l9-9zM7 14c1 0 2 1 2 2 0 2-2 4-4 4-1 0-2-1-2-2 0-2 2-4 4-4z"/></svg></button>
+    <button class="tool" title="Eraser (E)"><svg viewBox="0 0 24 24"><path d="M16 3l5 5-9 9H7L2 12l9-9h5zM7 17h15v2H7z"/></svg></button>
+    <button class="tool" title="Gradient (G)">
+      <svg viewBox="0 0 24 24"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#FF007A"/><stop offset="50%" stop-color="#7A00FF"/><stop offset="100%" stop-color="#FF6A00"/></linearGradient></defs><rect x="4" y="4" width="16" height="16" fill="url(#g)" stroke="currentColor"/></svg>
+    </button>
+    <button class="tool" title="Text (T)"><svg viewBox="0 0 24 24"><path d="M4 5h16v2h-7v12h-2V7H4z"/></svg></button>
+    <button class="tool" title="Zoom (Z)"><svg viewBox="0 0 24 24"><path d="M10 18a8 8 0 1 1 5.3-14.1L22 10.6l-1.4 1.4-6.7-6.7A6 6 0 1 0 10 16v2z"/></svg></button>
+  </aside>
 
-    <section class="canvas-area">
-      <div class="canvas-title">Untitled-1 @ 100%</div>
-      <div class="canvas-surface">
-        <div class="checker"></div>
+  <!-- Center: Image Generation Panel -->
+  <section class="gen-panel">
+    <div class="panel-header">
+      <h2 class="logo-script">Create</h2>
+      <div class="nsfw-toggle">
+        <input id="nsfw" type="checkbox">
+        <label for="nsfw" class="neon">NSFW</label>
       </div>
-      <div class="statusbar">W: 1024px  H: 1024px  |  RGB  |  8 bit</div>
-    </section>
+    </div>
 
-    <aside class="panels">
-      <div class="panel">
-        <div class="panel-title">Layers</div>
-        <div class="panel-body">
-          <div class="layer-item active">Layer 1</div>
-          <div class="layer-item">Background</div>
-        </div>
+    <label class="field-label">Prompt</label>
+    <textarea class="prompt" rows="5" placeholder="Describe the image you want… e.g., 'cinematic portrait, rim lighting, neon city at night'"></textarea>
+
+    <div class="grid-2">
+      <div>
+        <label class="field-label">Style Preset</label>
+        <select class="select">
+          <option>— None —</option>
+          <option>Cinematic</option>
+          <option>Noir</option>
+          <option>Watercolor</option>
+          <option>Low Poly</option>
+          <option>Poster Art</option>
+        </select>
       </div>
-      <div class="panel">
-        <div class="panel-title">Properties</div>
-        <div class="panel-body">
-          <label>Opacity</label>
-          <input type="range" min="0" max="100" value="100">
-          <label>Blend</label>
-          <select><option>Normal</option><option>Multiply</option><option>Screen</option></select>
-        </div>
+      <div>
+        <label class="field-label">Aspect Ratio</label>
+        <select class="select">
+          <option>1:1 (1024×1024)</option>
+          <option>16:9</option>
+          <option>9:16</option>
+          <option>3:2</option>
+          <option>2:3</option>
+        </select>
       </div>
-      <div class="panel">
-        <div class="panel-title">History</div>
-        <div class="panel-body">
-          <ol class="history">
-            <li>New</li>
-            <li>Import</li>
-          </ol>
-        </div>
+    </div>
+
+    <div class="grid-3">
+      <div>
+        <label class="field-label">Steps</label>
+        <input type="number" class="input" value="28" min="4" max="80">
       </div>
-    </aside>
-  </main>
+      <div>
+        <label class="field-label">CFG</label>
+        <input type="number" class="input" value="6.5" min="1" max="14" step="0.5">
+      </div>
+      <div>
+        <label class="field-label">Seed</label>
+        <input type="number" class="input" placeholder="random">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-gradient">Generate</button>
+      <button class="btn-ghost">Enhance Prompt</button>
+      <button class="btn-ghost">Randomize Seed</button>
+    </div>
+  </section>
+
+  <!-- Right: Result & History -->
+  <aside class="result-panel">
+    <div class="panel card">
+      <div class="panel-title">Result</div>
+      <div class="panel-body result-body">
+        <div class="result-placeholder">Your image will appear here</div>
+        <!-- <img class="result-img" src="..." alt=""> -->
+      </div>
+    </div>
+
+    <div class="panel card">
+      <div class="panel-title">History</div>
+      <div class="panel-body">
+        <ul class="history-list">
+          <li class="history-item">No generations yet</li>
+        </ul>
+      </div>
+    </div>
+  </aside>
+</main>
 
   <!-- Splash timing script (immediate 3s fade-in, 3s hold) -->
   <script>
