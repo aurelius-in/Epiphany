@@ -1,3 +1,5 @@
+![Epiphany Preview](epiphany-preview.gif)
+
 Epiphany AI Art Studio — Full-Stack Diffusion + Video
 
 A production‑ready, demo‑friendly AI art studio for images and video.
@@ -9,6 +11,8 @@ A production‑ready, demo‑friendly AI art studio for images and video.
 - Editing: Real‑ESRGAN, GFPGAN, rembg, PIL/OpenCV ops
 - Explainability: attention maps, token attributions, safety scores
 - Infra: Postgres, Redis, MinIO, Docker Compose (GPU via nvidia‑container‑toolkit)
+
+Note: Root static files were moved to `apps/web/public/`. Use that folder for UI assets.
 
 ---
 
