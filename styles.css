@@ -186,3 +186,41 @@ a:hover{ text-decoration:underline }
   .workspace{ grid-template-columns: 60px 1fr; grid-auto-rows: auto; }
   .result-panel{ grid-column: 1 / -1; }
 }
+
+/* === Mode Slider: bigger, wider, bolder === */
+.panel-header{ gap:16px; }
+.mode-slider{
+  /* grow to fill header width */
+  flex: 1 1 680px;
+  min-width: 560px;              /* was 340px */
+  max-width: 980px;
+}
+
+.mode-labels .lbl{ font-weight:700; opacity:.95; letter-spacing:.3px; }
+.mode-labels .safe{     font-size:18px; }
+.mode-labels .research{ font-size:20px; }
+.mode-labels .nsfw{     font-size:24px; }
+
+.mode-slider .range{
+  height:14px;                   /* was 10px */
+  border-radius:999px;
+}
+.mode-slider .range::-webkit-slider-thumb,
+.mode-slider .range::-moz-range-thumb{
+  width:26px; height:26px;       /* was 22px */
+  margin-top:-8px;               /* centers the bigger thumb */
+}
+
+.mode-slider .ticks{ height:10px; }
+.mode-slider .ticks span{ height:10px; }
+
+/* Responsive tweaks so it still looks good on phones */
+@media (max-width: 980px){
+  .mode-slider{ min-width: 0; flex: 1 1 auto; }
+  .mode-labels .safe{font-size:16px}
+  .mode-labels .research{font-size:18px}
+  .mode-labels .nsfw{font-size:22px}
+}
+@media (max-width: 560px){
+  .mode-slider{ max-width: 100%; }
+}
