@@ -5,8 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Epiphany AI Art Studio — Home</title>
   <link rel="stylesheet" href="styles.css">
+
+  <!-- Inline splash CSS so you don't have to touch styles.css -->
+  <style>
+    /* Splash overlay */
+    .splash {
+      position: fixed; inset: 0; background:#000;
+      display:grid; place-items:center; z-index: 9999;
+    }
+    .splash-logo { width: 80vw; height: auto; opacity: 0; }   /* hidden first 1s */
+    .splash-veil {
+      position: absolute; inset: 0; background:#000; opacity: 0.99; /* 99% black on first frame */
+      pointer-events: none; transition: opacity 2s ease;             /* fades 1–3s */
+    }
+    .splash.show .splash-logo { opacity: 1; }   /* reveal logo at t=1s */
+    .splash.fade .splash-veil { opacity: 0; }   /* veil fades to 0 between 1–3s */
+    .splash.done { opacity: 0; transition: opacity .3s ease; pointer-events:none; }
+    @media (prefers-reduced-motion: reduce) {
+      .splash-veil { transition: none; }
+      .splash.done { transition: none; }
+    }
+  </style>
 </head>
 <body class="theme-dark">
+
+  <!-- Splash Overlay (stays in index.html; no redirect loops) -->
+  <div id="splash" class="splash">
+    <img src="epiphany.gif" alt="Epiphany" class="splash-logo" />
+    <div class="splash-veil"></div>
+  </div>
+
   <header class="topbar">
     <div class="brand">
       <img src="epiphany.gif" alt="Epiphany Logo" class="brand-logo">
@@ -84,5 +112,34 @@
       </div>
     </aside>
   </main>
+
+  <!-- Splash timing script -->
+  <script>
+    // Show only once per session (set to false to always show)
+    const once = true;
+
+    (function runSplash(){
+      const splash = document.getElementById('splash');
+      if (!splash) return;
+
+      if (once && sessionStorage.getItem('sawSplash') === '1') {
+        splash.remove();
+        return;
+      }
+      if (once) sessionStorage.setItem('sawSplash', '1');
+
+      // 0–1s: full black, logo hidden
+      setTimeout(() => {
+        splash.classList.add('show');               // show logo at t = 1s
+        requestAnimationFrame(() => splash.classList.add('fade')); // fade veil 1–3s
+      }, 1000);
+
+      // 3–6s: full brightness, remove overlay at 6s
+      setTimeout(() => {
+        splash.classList.add('done');
+        setTimeout(() => splash.remove(), 350);     // let tiny fade finish
+      }, 6000);
+    })();
+  </script>
 </body>
 </html>
