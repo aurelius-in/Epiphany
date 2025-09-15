@@ -23,11 +23,29 @@
 
 ## 🖥 Architecture
 
-apps/web       → Next.js 14 + Tailwind UI
-services/api   → Express + BullMQ + Prisma + S3 storage
-services/infer → FastAPI + Diffusers (SDXL, Inpainting, ControlNet)
-packages/sdk   → Lightweight TS client for job/enhance APIs
-infra/compose  → Docker Compose for Postgres, Redis, MinIO
+```text
+
+epiphany/
+  apps/web/          # Next.js 14 + Tailwind UI
+  services/api/      # Express API + BullMQ + Prisma + S3/MinIO
+  services/infer/    # FastAPI + Diffusers (SDXL, Inpainting, ControlNet)
+  packages/sdk/      # Tiny TS client for /enhance and /jobs
+  infra/compose/     # docker-compose for Postgres, Redis, MinIO
+  ops/migrations/    # Prisma migrations
+
+```Mermaid
+
+flowchart LR
+  UI[Next.js Web] -->|REST /enhance, /jobs| API[Express API]
+  API -->|enqueue| Q[(Redis Queue)]
+  WKR[GPU Inference Worker\n(FastAPI + Diffusers)] --> S3[(S3/MinIO)]
+  Q -->|pull job| WKR
+  API --> DB[(Postgres)]
+  UI -->|poll /jobs/:id| API
+
+```
+
+```
 
 - **Queue:** Redis (BullMQ) for job scheduling  
 - **Database:** Postgres via Prisma for audit logs  
