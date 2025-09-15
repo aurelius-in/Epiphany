@@ -4,6 +4,7 @@ import cors from 'cors'
 import morgan from 'morgan'
 import { getEnv } from './env'
 import { requestId, apiKeyAuth } from './middleware'
+import { routes } from './routes'
 
 const env = getEnv()
 const app = express()
@@ -18,8 +19,6 @@ app.get('/v1/health', async (_req, res) => {
 	res.json({ ok: true, services: { db: false, redis: false, s3: false } })
 })
 
-app.get('/v1/generations', async (_req, res) => {
-	res.json({ items: [] })
-})
+app.use('/v1', routes)
 
 app.listen(env.API_PORT, () => console.log(`[api] listening on :${env.API_PORT}`))
