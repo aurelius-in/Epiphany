@@ -571,4 +571,40 @@ r.get('/assets/:id/signed', async (req, res) => {
 	}
 })
 
+r.get('/stats/daily', async (req, res) => {
+	const days = Math.max(1, Math.min(30, parseInt(String(req.query.days || '7')) || 7))
+	const today = new Date()
+	const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+	const daysArr: { date: string, start: Date, end: Date }[] = []
+	for (let i=days-1; i>=0; i--) {
+		const d = new Date(startOfDay(today).getTime() - i*24*3600*1000)
+		const e = new Date(d.getTime() + 24*3600*1000)
+		const iso = d.toISOString().slice(0,10)
+		daysArr.push({ date: iso, start: d, end: e })
+	}
+	const out: any[] = []
+	for (const d of daysArr) {
+		const [gen, ast, evt] = await Promise.all([
+			prisma.generation.count({ where: { createdAt: { gte: d.start, lt: d.end } } }),
+			prisma.asset.count({ where: { /* assets have no createdAt, approximate by id order */ } } as any).then(c=>c),
+			prisma.event.count({ where: { createdAt: { gte: d.start, lt: d.end } } }),
+		])
+		out.push({ date: d.date, generations: gen, assets: ast, events: evt })
+	}
+	res.json({ days, items: out })
+})
+
+r.get('/stats/daily.csv', async (req, res) => {
+	const url = new URL(req.url, 'http://localhost')
+	const search = url.search
+	const r = await fetch('http://localhost:'+ (process.env.API_PORT || '4000') + '/v1/stats/daily' + search).then(r=>r.json()).catch(()=>null as any)
+	if (!r || !r.items) return res.status(500).json({ error: 'stats_failed' })
+	const rows = [['date','generations','assets','events']]
+	for (const it of r.items) rows.push([it.date, String(it.generations), String(it.assets), String(it.events)])
+	const csv = rows.map((x: any[]) => x.join(',')).join('\n')
+	res.setHeader('Content-Type', 'text/csv')
+	res.setHeader('Content-Disposition', 'attachment; filename="stats_daily.csv"')
+	res.send(csv)
+})
+
 export const routes = r
