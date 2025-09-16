@@ -4,15 +4,14 @@ import { useEffect, useState } from 'react'
 
 type Health = { ok: boolean, services: Record<string, boolean> }
 
-type Version = { name?: string, version?: string }
-
-type Config = { webOrigin?: string|null, allowNswf?: boolean, rateLimit?: any, s3?: any }
+type RateInfo = { limit?: string|null, remaining?: string|null, window?: string|null, reset?: string|null, requestId?: string|null }
 
 export default function HealthPage() {
 	const [data, setData] = useState<Health | null>(null)
 	const [error, setError] = useState<string | null>(null)
-	const [version, setVersion] = useState<Version | null>(null)
-	const [config, setConfig] = useState<Config | null>(null)
+	const [version, setVersion] = useState<any>(null)
+	const [config, setConfig] = useState<any>(null)
+	const [rate, setRate] = useState<RateInfo>({})
 
 	useEffect(() => {
 		const run = async () => {
@@ -20,6 +19,13 @@ export default function HealthPage() {
 				const res = await fetch(`/api/proxy/v1/health`)
 				if (!res.ok) throw new Error(`HTTP ${res.status}`)
 				setData(await res.json())
+				setRate({
+					limit: res.headers.get('x-ratelimit-limit'),
+					remaining: res.headers.get('x-ratelimit-remaining'),
+					window: res.headers.get('x-ratelimit-window'),
+					reset: res.headers.get('x-ratelimit-reset'),
+					requestId: res.headers.get('x-request-id'),
+				})
 				const v = await fetch(`/api/proxy/v1/version`)
 				setVersion(await v.json())
 				const c = await fetch(`/api/proxy/v1/config`)
@@ -49,6 +55,11 @@ export default function HealthPage() {
 					)}
 					{config && (
 						<pre style={{marginTop:8, background:'#0b0b0d', padding:12, border:'1px solid #26262a', borderRadius:8}}>{JSON.stringify(config, null, 2)}</pre>
+					)}
+					{(rate.limit || rate.remaining) && (
+						<div style={{marginTop:8, fontSize:12, color:'#a4a4ad'}}>
+							Rate: limit={rate.limit} remaining={rate.remaining} windowMs={rate.window} resetMs={rate.reset} requestId={rate.requestId}
+						</div>
 					)}
 					<div style={{marginTop: 12}}>
 						<a href="/api/proxy/v1/events" target="_blank" style={{color:'#cfd0ff'}}>Open Events JSON</a>
