@@ -90,6 +90,7 @@ app.get('/v1/config', (_req, res) => {
 		allowNswf: !!env.ALLOW_NSWF,
 		rateLimit: { max: env.RATE_LIMIT_MAX || 120, windowMs: env.RATE_LIMIT_WINDOW_MS || 60_000 },
 		s3: { endpoint: env.S3_ENDPOINT || null, region: env.S3_REGION || null, bucket: env.S3_BUCKET || null, inputsBucket: env.S3_INPUTS_BUCKET || env.S3_BUCKET || null },
+		retentionDays: env.RETENTION_DAYS || null,
 	})
 })
 
@@ -152,5 +153,16 @@ app.use((_req, res) => {
 })
 
 startWorkers()
+
+// Schedule daily retention if configured
+try {
+	if (env.RETENTION_DAYS && env.RETENTION_DAYS > 0) {
+		const { queues } = await import('./queues')
+		setInterval(() => {
+			queues.retention.add('purge', { days: env.RETENTION_DAYS }, { removeOnComplete: true, removeOnFail: true }).catch(()=>{})
+		}, 24 * 60 * 60 * 1000)
+		queues.retention.add('purge', { days: env.RETENTION_DAYS }, { removeOnComplete: true, removeOnFail: true }).catch(()=>{})
+	}
+} catch {}
 
 app.listen(env.API_PORT, () => console.log(`[api] listening on :${env.API_PORT}`))

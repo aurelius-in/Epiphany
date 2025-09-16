@@ -227,6 +227,10 @@
             <span style="font-size:12px;color:#a4a4ad">Apply stylization to input/video</span>
           </div>
         </div>
+        <div>
+          <label class="field-label" for="videoModelSelect">Video Model</label>
+          <select id="videoModelSelect" class="select"><option value="svd">SVD</option><option value="modelscope-t2v">ModelScope</option></select>
+        </div>
       </div>
     </section>
 
@@ -490,6 +494,7 @@
       const videoUseInit = document.getElementById('videoUseInit');
       const videoSourceFile = document.getElementById('videoSourceFile');
       const videoStylize = document.getElementById('videoStylize');
+      const videoModelSelect = document.getElementById('videoModelSelect');
       const initFile = document.getElementById('initFile');
       const maskFile = document.getElementById('maskFile');
       const resultImg = document.getElementById('resultImg');
@@ -781,6 +786,7 @@
             durationSec: Number((durationSelect && durationSelect.value) || 4),
             sourceImageUrl: sourceUrl || undefined,
             stylize: !!(videoStylize && videoStylize.checked),
+            modelId: String((videoModelSelect && (videoModelSelect as any).value) || '' ) || undefined,
           };
           const j = await postJson(`${API_BASE}/v1/generate/video`, body);
           window.lastJobId = j.id;
