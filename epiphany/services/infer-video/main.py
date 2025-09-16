@@ -131,22 +131,24 @@ async def animate(request: Request):
 		import numpy as np
 		fps = int((body.get('fps') or 12))
 		duration_sec = int((body.get('durationSec') or 4))
+		resolution = str(body.get('resolution') or '576p')
+		out_w, out_h = (1024, 576) if resolution == '576p' else (1280, 720)
 		total = max(1, fps * duration_sec)
 		if ctrl_bytes:
-			im = PILImage.open(BytesIO(ctrl_bytes)).convert('RGB').resize((256,256))
+			im = PILImage.open(BytesIO(ctrl_bytes)).convert('RGB').resize((out_w, out_h))
 			for i in range(total):
 				denom = max(1, total-1)
-				scale = 1.0 + 0.15 * (i/denom)
-				w = int(256*scale); h = int(256*scale)
+				scale = 1.0 + 0.10 * (i/denom)
+				w = int(out_w*scale); h = int(out_h*scale)
 				im2 = im.resize((w,h))
-				x0 = (w-256)//2; y0 = (h-256)//2
-				crop = im2.crop((x0,y0,x0+256,y0+256))
+				x0 = (w-out_w)//2; y0 = (h-out_h)//2
+				crop = im2.crop((x0,y0,x0+out_w,y0+out_h))
 				frames.append(np.array(crop))
 		else:
 			for i in range(total):
 				denom = max(1, total-1)
 				val = int(255 * (i / denom))
-				frame = np.zeros((256, 256, 3), dtype=np.uint8)
+				frame = np.zeros((out_h, out_w, 3), dtype=np.uint8)
 				frame[:, :, 0] = val
 				frame[:, :, 1] = (255 - val)
 				frame[:, :, 2] = 128
