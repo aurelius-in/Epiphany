@@ -10,3 +10,12 @@ diffusers==0.29.2
 transformers==4.43.2
 safetensors==0.4.4
 imageio[ffmpeg]==2.34.1
+
+diffusers
+torch
+transformers
+accelerate
+requests
+imageio
+imageio-ffmpeg
+modelscope

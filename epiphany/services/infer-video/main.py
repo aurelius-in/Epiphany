@@ -30,6 +30,14 @@ try:
 except Exception:
 	_diffusers_available = False
 
+try:
+	from modelscope.pipelines import pipeline as ms_pipeline  # type: ignore
+	from modelscope.utils.constant import Tasks as MS_Tasks  # type: ignore
+	_modelscope_available = True
+except Exception:
+	_modelscope_available = False
+
+
 ALLOWED_URL_PREFIXES = [p.strip() for p in (os.getenv('ALLOWED_URL_PREFIXES') or '').split(',') if p.strip()]
 
 def is_allowed_url(url: str) -> bool:
@@ -94,6 +102,48 @@ def try_t2v_with_svd(prompt: str, fps: int = 12, resolution: str = '576p', durat
 	except Exception:
 		return None
 
+def try_t2v_with_modelscope(prompt: str, fps: int, resolution: str, duration_sec: int) -> Optional[BytesIO]:
+	if not _modelscope_available:
+		return None
+	try:
+		# Placeholder: generate a different gradient pattern; real integration would call modelscope pipeline
+		w, h = (1024, 576) if resolution == '576p' else (1280, 720)
+		total = max(1, fps * duration_sec)
+		frames = []
+		for i in range(total):
+			den = max(1, total-1)
+			t = i/den
+			frame = np.zeros((h, w, 3), dtype=np.uint8)
+			frame[:, :, 0] = int(255 * abs(np.sin(np.pi*t)))
+			frame[:, :, 1] = int(255 * abs(np.cos(np.pi*t)))
+			frame[:, :, 2] = 96
+			frames.append(frame)
+		buf = BytesIO(); imageio.mimsave(buf, frames, format='FFMPEG', fps=fps)
+		return buf
+	except Exception:
+		return None
+
+
+def simple_safety_from_prompt(prompt: str):
+	p = (prompt or '').lower()
+	nsfw_keywords = ['nsfw', 'nude', 'nudity', 'explicit', 'adult']
+	score = 1.0 if any(k in p for k in nsfw_keywords) else 0.0
+	return {"nsfw": score}
+
+def vision_safety_score(buf: BytesIO) -> float:
+	try:
+		buf.seek(0)
+		import imageio.v2 as iio
+		frames = iio.mimread(buf, format='ffmpeg')
+		if not frames: return 0.0
+		f0 = frames[0]
+		# Heuristic: high red dominance -> tiny nsfw hint (placeholder)
+		import numpy as np
+		r = float(np.mean(f0[:,:,0])); g = float(np.mean(f0[:,:,1])); b = float(np.mean(f0[:,:,2]))
+		return max(0.0, min(1.0, (r - max(g,b)) / 255.0))
+	except Exception:
+		return 0.0
+
 @app.get('/health')
 async def health():
 	return {"ok": True, "model": MODEL_ID}
@@ -106,30 +156,24 @@ async def t2v(request: Request):
 	resolution = str(body.get('resolution') or '576p')
 	duration_sec = int(body.get('durationSec') or 4)
 	model_id = str(body.get('modelId') or 'svd')
-	raw = try_t2v_with_svd(prompt, fps=fps, resolution=resolution, duration_sec=duration_sec) or BytesIO()
-	# If ModelScope requested and no real model, synthesize a different color pattern
-	if model_id != 'svd' and raw.getbuffer().nbytes > 0:
-		try:
-			w, h = (1024, 576) if resolution == '576p' else (1280, 720)
-			total = max(1, fps * duration_sec)
-			frames = []
-			for i in range(total):
-				den = max(1, total-1)
-				t = i/den
-				frame = np.zeros((h, w, 3), dtype=np.uint8)
-				frame[:, :, 0] = int(255 * (t))
-				frame[:, :, 1] = int(255 * (1-t))
-				frame[:, :, 2] = 64
-				frames.append(frame)
-			raw = BytesIO(); imageio.mimsave(raw, frames, format='FFMPEG', fps=fps)
-		except Exception:
-			pass
+	raw = None
+	if model_id == 'modelscope-t2v':
+		raw = try_t2v_with_modelscope(prompt, fps=fps, resolution=resolution, duration_sec=duration_sec)
+	if raw is None:
+		raw = try_t2v_with_svd(prompt, fps=fps, resolution=resolution, duration_sec=duration_sec)
+	raw = raw or BytesIO()
 	if raw.getbuffer().nbytes == 0:
 		raw.write(b"Epiphany video stub")
 	key = f"gen/t2v_{random.randint(0, 1_000_000)}.mp4"
 	url = upload_bytes(key, raw, 'video/mp4')
 	meta = bytes_meta(raw)
-	return {"output_url": url, "model_hash": MODEL_ID, "duration_ms": 1, "video_meta": meta, "echo": {"prompt": prompt}}
+	safety = simple_safety_from_prompt(prompt)
+	try:
+		vs = vision_safety_score(raw)
+		safety['nsfw'] = max(float(safety.get('nsfw', 0.0)), float(vs))
+	except Exception:
+		pass
+	return {"output_url": url, "model_hash": MODEL_ID, "duration_ms": 1, "video_meta": meta, "echo": {"prompt": prompt}, "safety_scores": safety}
 
 @app.post('/infer/animate')
 async def animate(request: Request):
@@ -177,7 +221,7 @@ async def animate(request: Request):
 	key = f"gen/animate_{random.randint(0, 1_000_000)}.mp4"
 	url = upload_bytes(key, buf, 'video/mp4')
 	meta = bytes_meta(buf)
-	return {"output_url": url, "model_hash": MODEL_ID, "duration_ms": 1, "video_meta": meta}
+	return {"output_url": url, "model_hash": MODEL_ID, "duration_ms": 1, "video_meta": meta, "safety_scores": simple_safety_from_prompt(body.get('prompt',''))}
 
 @app.post('/infer/stylize')
 async def stylize(request: Request):
@@ -208,4 +252,4 @@ async def stylize(request: Request):
 	key = f"gen/stylize_{random.randint(0, 1_000_000)}.mp4"
 	url = upload_bytes(key, buf, 'video/mp4')
 	meta = bytes_meta(buf)
-	return {"output_url": url, "model_hash": MODEL_ID, "duration_ms": 1, "video_meta": meta}
+	return {"output_url": url, "model_hash": MODEL_ID, "duration_ms": 1, "video_meta": meta, "safety_scores": simple_safety_from_prompt(body.get('prompt',''))}

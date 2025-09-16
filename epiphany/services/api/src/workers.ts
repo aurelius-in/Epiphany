@@ -61,7 +61,7 @@ async function processGenerateVideo(job: Job) {
 		const resp = await postJson<any>(endpoint, job.data)
 		await job.updateProgress(90)
 		const durationMs = resp.duration_ms || (Date.now() - t0)
-		await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'succeeded', outputUrl: resp.output_url || null, durationMs, modelHash: resp.model_hash || null } })
+		await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'succeeded', outputUrl: resp.output_url || null, durationMs, modelHash: resp.model_hash || null, safety: (resp as any).safety_scores || null } })
 		await prisma.event.create({ data: { generationId: job.data.generationId, type: 'succeeded', payload: { jobId: job.id, durationMs, requestId: (job.data as any)?.requestId } as any } })
 		if (resp.output_url) {
 			const meta = (resp as any).video_meta || {}
@@ -123,13 +123,18 @@ async function processRetention(job: Job) {
 		const days = Number(job.data?.days || 0)
 		if (!days || days <= 0) return { deleted: 0 }
 		const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
-		// Delete assets older than cutoff
+		// Delete assets older than cutoff (S3 + DB)
 		const oldAssets = await prisma.asset.findMany({ where: { createdAt: { lt: cutoff } } as any })
 		let deleted = 0
 		for (const a of oldAssets) {
-			try { await prisma.asset.delete({ where: { id: a.id } }); deleted++ } catch {}
+			try {
+				const { deleteObjectByUrl } = await import('./s3')
+				await deleteObjectByUrl(a.url)
+				await prisma.asset.delete({ where: { id: a.id } })
+				deleted++
+			} catch {}
 		}
-		// Optionally mark generations without output older than cutoff as deleted/failed
+		// Optionally touch generations older than cutoff
 		const oldGens = await prisma.generation.findMany({ where: { createdAt: { lt: cutoff }, status: { in: ['succeeded','failed'] } } as any })
 		let touched = 0
 		for (const g of oldGens) { try { await prisma.generation.update({ where: { id: g.id }, data: { status: g.status } }); touched++ } catch {} }

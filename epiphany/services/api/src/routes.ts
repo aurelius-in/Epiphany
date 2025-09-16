@@ -67,6 +67,9 @@ const genImageSchema = z.object({
 r.post('/generate/image', async (req, res) => {
 	const body = genImageSchema.parse(req.body)
 	const modeFinal = body.mode === 2 && !env.ALLOW_NSWF ? 1 : body.mode
+	// Basic prompt safety gating in Safe mode
+	const unsafe = /(nsfw|nude|nudity|explicit|adult)/i.test(body.prompt || '')
+	if (!env.ALLOW_NSWF && modeFinal === 0 && unsafe) return res.status(400).json({ error: 'unsafe_prompt' })
 	const generation = await prisma.generation.create({ data: {
 		kind: 'image',
 		status: 'queued',
@@ -109,6 +112,9 @@ const genVideoSchema = z.object({
 r.post('/generate/video', async (req, res) => {
 	const body = genVideoSchema.parse(req.body)
 	const modeFinal = body.mode === 2 && !env.ALLOW_NSWF ? 1 : body.mode
+	// Basic prompt safety gating in Safe mode
+	const unsafe = /(nsfw|nude|nudity|explicit|adult)/i.test(body.prompt || '')
+	if (!env.ALLOW_NSWF && modeFinal === 0 && unsafe) return res.status(400).json({ error: 'unsafe_prompt' })
 	const generation = await prisma.generation.create({ data: {
 		kind: 'video',
 		status: 'queued',
@@ -709,6 +715,21 @@ r.post('/retention/run', async (_req, res) => {
 		if (!days) return res.status(400).json({ error: 'retention_not_configured' })
 		const job = await queues.retention.add('purge', { days }, { removeOnComplete: true, removeOnFail: true })
 		return res.json({ id: job.id, days })
+	} catch (e: any) {
+		return res.status(500).json({ error: String(e?.message || e) })
+	}
+})
+
+r.get('/retention/preview', async (_req, res) => {
+	try {
+		const { getEnv } = await import('./env')
+		const e = getEnv()
+		const days = e.RETENTION_DAYS || 0
+		if (!days) return res.json({ days: null, assets: 0, generations: 0 })
+		const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+		const assets = await prisma.asset.count({ where: { createdAt: { lt: cutoff } } as any })
+		const generations = await prisma.generation.count({ where: { createdAt: { lt: cutoff } } as any })
+		return res.json({ days, assets, generations })
 	} catch (e: any) {
 		return res.status(500).json({ error: String(e?.message || e) })
 	}
