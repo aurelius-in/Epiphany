@@ -4,6 +4,7 @@ import cors from 'cors'
 import morgan from 'morgan'
 import pino from 'pino'
 import pinoHttp from 'pino-http'
+import { context, trace } from '@opentelemetry/api'
 import compression from 'compression'
 import helmet from 'helmet'
 import { getEnv } from './env'
@@ -37,10 +38,13 @@ app.use(pinoHttp({
 }))
 app.use((req, res, next) => {
   const start = Date.now()
+  const tracer = trace.getTracer('epiphany-api')
+  const span = tracer.startSpan('http_request', { attributes: { 'http.method': req.method, 'http.target': req.url, 'epiphany.request_id': (req as any).id } })
   res.on('finish', () => {
     try { (req as any).log?.info({ requestId: (req as any).id, durationMs: Date.now() - start }, 'request_finished') } catch {}
+    try { span.setAttribute('http.status_code', res.statusCode); span.end() } catch {}
   })
-  next()
+  context.with(trace.setSpan(context.active(), span), () => next())
 })
 app.use((req, res, next) => {
 	const orig = tinyRateLimit(env.RATE_LIMIT_MAX || 120, env.RATE_LIMIT_WINDOW_MS || 60_000)
