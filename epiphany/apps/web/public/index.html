@@ -174,6 +174,31 @@
         <button class="btn-ghost" id="btnEnhance">Enhance Prompt</button>
         <button class="btn-ghost" id="btnRandomSeed">Randomize Seed</button>
       </div>
+      <div class="grid-3" style="margin-top:8px">
+        <div>
+          <label class="field-label" for="fpsSelect">FPS</label>
+          <select id="fpsSelect" class="select"><option>12</option><option>24</option></select>
+        </div>
+        <div>
+          <label class="field-label" for="resSelect">Resolution</label>
+          <select id="resSelect" class="select"><option>576p</option><option>720p</option></select>
+        </div>
+        <div>
+          <label class="field-label" for="durationSelect">Duration</label>
+          <select id="durationSelect" class="select"><option>4</option><option>8</option><option>12</option></select>
+        </div>
+      </div>
+
+      <div class="grid-3" style="margin-top:8px">
+        <div>
+          <label class="field-label" for="videoSourceFile">Video Source (optional)</label>
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+            <input id="videoUseInit" type="checkbox" />
+            <label for="videoUseInit" style="font-size:12px;color:#a4a4ad">Use Init as source</label>
+          </div>
+          <input id="videoSourceFile" type="file" accept="image/*" class="input" />
+        </div>
+      </div>
     </section>
 
     <!-- Right: Result & History -->
@@ -390,6 +415,7 @@
         console.error('enhance failed', err);
       }
     });
+    document.getElementById('btnGenerateVideo')?.addEventListener('click', async (e) => { e.preventDefault(); await onGenerateVideo(); });
   </script>
 
   <!-- API wiring -->
@@ -407,6 +433,11 @@
       const seedEl = document.getElementById('seedInput');
       const genBtn = document.getElementById('btnGenerate');
       const genVideoBtn = document.getElementById('btnGenerateVideo');
+      const fpsSelect = document.getElementById('fpsSelect');
+      const resSelect = document.getElementById('resSelect');
+      const durationSelect = document.getElementById('durationSelect');
+      const videoUseInit = document.getElementById('videoUseInit');
+      const videoSourceFile = document.getElementById('videoSourceFile');
       const initFile = document.getElementById('initFile');
       const maskFile = document.getElementById('maskFile');
       const resultImg = document.getElementById('resultImg');
@@ -460,6 +491,25 @@
           if (!r.ok) throw new Error('multipart failed ' + r.status);
           const j = await r.json(); return j.url;
         }
+      }
+
+      async function uploadVideoSourceIfAny(initUrlCandidate) {
+        try{
+          if (videoUseInit && videoUseInit.checked && initUrlCandidate) return initUrlCandidate;
+          const f = (videoSourceFile && videoSourceFile.files && videoSourceFile.files[0]) ? videoSourceFile.files[0] : null;
+          if (!f) return null;
+          try {
+            const up = await postJson(`${API_BASE}/v1/upload-url`, { key: undefined, contentType: f.type || 'application/octet-stream' });
+            const putRes = await fetch(up.putUrl, { method: 'PUT', headers: { 'Content-Type': f.type || 'application/octet-stream' }, body: f });
+            if (!putRes.ok) throw new Error('upload failed ' + putRes.status);
+            return up.publicUrl;
+          } catch (_e) {
+            const fd = new FormData(); fd.append('file', f, f.name || 'upload.bin');
+            const r = await fetch(`${API_BASE}/v1/upload`, { method: 'POST', headers: { 'X-API-Key': API_KEY }, body: fd });
+            if (!r.ok) throw new Error('multipart failed ' + r.status);
+            const j = await r.json(); return j.url;
+          }
+        }catch(_){ return null }
       }
       async function getJson(url) {
         const res = await fetch(url, { headers: headers() });
@@ -604,3 +654,42 @@
               li.appendChild(a);
               if (st.explainId){
                 const ex = document.createElement('a'); ex.href = `/explain/${st.explainId}`
+              }
+            }
+          }
+        } catch (err) {
+          console.error('generation failed', err);
+        }
+      }
+
+      async function onGenerateVideo(){
+        try{
+          resultBody.innerHTML = '<div class="result-placeholder">Generating video…</div>';
+          const initUrl = await uploadInitIfAny().catch(()=>null);
+          const sourceUrl = await uploadVideoSourceIfAny(initUrl).catch(()=>null);
+          const body = {
+            prompt: String(promptEl.value || '').slice(0,2000),
+            mode: Number(modeRange.value || 0),
+            fps: Number((fpsSelect && fpsSelect.value) || 12),
+            resolution: String((resSelect && resSelect.value) || '576p'),
+            durationSec: Number((durationSelect && durationSelect.value) || 4),
+            sourceImageUrl: sourceUrl || undefined,
+          };
+          const j = await postJson(`${API_BASE}/v1/generate/video`, body);
+          window.lastJobId = j.id;
+          const es = subscribeJob(j.id, (ev) => {
+            if (ev.progress != null) {
+              resultBody.innerHTML = `<div class=\"result-placeholder\">Progress: ${ev.progress}%</div>`;
+            }
+          });
+          const st = await pollJob(j.id);
+          if (es) es.close();
+          if (st.outputUrl){
+            resultBody.innerHTML = '';
+            const v = document.createElement('video'); v.src = st.outputUrl; v.controls = true; v.style.width='100%';
+            resultBody.appendChild(v);
+          }
+        }catch(e){ try{ showToast('Video failed', { type:'error' }) }catch(_){} }
+      }
+    })();
+  </script>
