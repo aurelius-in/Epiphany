@@ -105,8 +105,21 @@ def try_t2v_with_svd(prompt: str, fps: int = 12, resolution: str = '576p', durat
 def try_t2v_with_modelscope(prompt: str, fps: int, resolution: str, duration_sec: int) -> Optional[BytesIO]:
 	if not _modelscope_available:
 		return None
+	# Try real ModelScope pipeline if available
 	try:
-		# Placeholder: generate a different gradient pattern; real integration would call modelscope pipeline
+		model_id = os.getenv('MODELSCOPE_T2V_MODEL', 'damo/text-to-video-synthesis')
+		pipe = ms_pipeline(MS_Tasks.text_to_video_synthesis, model=model_id)  # type: ignore
+		res = pipe({'text': prompt})
+		video_path = None
+		if isinstance(res, dict):
+			video_path = res.get('output_video') or res.get('output_path')
+		if video_path and isinstance(video_path, str) and os.path.exists(video_path):
+			with open(video_path, 'rb') as f:
+				return BytesIO(f.read())
+	except Exception:
+		pass
+	# Fallback: generate a different gradient pattern; real integration would call modelscope pipeline
+	try:
 		w, h = (1024, 576) if resolution == '576p' else (1280, 720)
 		total = max(1, fps * duration_sec)
 		frames = []
