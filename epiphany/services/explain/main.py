@@ -20,10 +20,22 @@ async def health():
 
 @app.get('/attention/{id}')
 async def attention(id: str):
+	# Generate a simple synthetic heatmap (gradient with radial emphasis)
+	w, h = 256, 256
+	img = Image.new('RGB', (w, h))
+	px = img.load()
+	cx, cy = w/2.0, h/2.0
+	for y in range(h):
+		for x in range(w):
+			dx = (x - cx) / cx
+			dy = (y - cy) / cy
+			r = int(max(0, 255 * (1.0 - (dx*dx + dy*dy))))
+			g = int((x / (w-1)) * 255)
+			b = int((y / (h-1)) * 255)
+			px[x, y] = (r//2, g, b//2)
 	buf = BytesIO()
-	img = Image.new('RGB', (64, 64), color=(80, 0, 100))
 	img.save(buf, format='PNG')
-	key = f"stub/{id}_attn.png"
+	key = f"attention/{id}_attn.png"
 	s3.put_object(Bucket=S3_BUCKET, Key=key, Body=buf.getvalue(), ContentType='image/png')
 	url = f"{S3_ENDPOINT}/{S3_BUCKET}/{key}"
 	return {"id": id, "heatmap_urls": [url]}
