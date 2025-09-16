@@ -351,4 +351,9 @@ export async function filterGenerations(baseUrl: string, apiKey: string, params:
 	return await r.json()
 }
 
+export async function drainQueue(baseUrl: string, apiKey: string, name: string) {
+	const r = await fetch(`${baseUrl}/v1/queues/empty`, { method: 'POST', headers: headers(apiKey), body: JSON.stringify({ name }) })
+	return await r.json()
+}
+
 export type { z } from 'zod'

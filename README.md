@@ -99,6 +99,9 @@ Headers: `X-API-Key: <string>`, `Content-Type: application/json`
 - GET  `/v1/uptime` → `{ startedAt, uptimeMs }`
 - GET  `/v1/queues` → BullMQ queue counts by state
 - GET  `/v1/_routes` → simple introspection of registered routes
+- GET  `/v1/metrics` → aggregate counts (generations/assets/events/explains)
+- GET  `/v1/metrics.csv` → single-row CSV of totals
+- POST `/v1/queues/empty` → drain a queue by name (body: `{ name }`)
 - GET  `/v1/stats/daily` → daily counts of generations/assets/events (last N days)
 - GET  `/v1/stats/daily.csv` → CSV of daily stats
 
