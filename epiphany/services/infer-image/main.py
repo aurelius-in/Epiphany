@@ -31,24 +31,39 @@ async def txt2img(request: Request):
 	prompt = body.get('prompt', '')
 	steps = int(body.get('steps', 20))
 	cfg = float(body.get('cfg', 7.0))
-	# generate 64x64 black PNG as stub
 	img = Image.new('RGB', (64, 64), color=(0, 0, 0))
 	buf = BytesIO()
 	img.save(buf, format='PNG')
-	url = upload_png('stub/sample.png', buf)
+	url = upload_png('stub/txt2img.png', buf)
 	return {"output_url": url, "preview_urls": [], "model_hash": MODEL_ID, "duration_ms": 1, "safety_scores": {"dummy": 0.0}, "echo": {"prompt": prompt, "steps": steps, "cfg": cfg}}
 
 @app.post('/infer/img2img')
 async def img2img(request: Request):
-	_ = await request.json()
-	return {"output_url": None, "preview_urls": []}
+	body = await request.json()
+	init_url = body.get('initImageUrl')
+	img = Image.new('RGB', (64, 64), color=(10, 10, 10))
+	buf = BytesIO()
+	img.save(buf, format='PNG')
+	url = upload_png('stub/img2img.png', buf)
+	return {"output_url": url, "preview_urls": [], "echo": {"initImageUrl": init_url}}
 
 @app.post('/infer/inpaint')
 async def inpaint(request: Request):
-	_ = await request.json()
-	return {"output_url": None, "preview_urls": []}
+	body = await request.json()
+	mask_url = body.get('maskUrl')
+	img = Image.new('RGB', (64, 64), color=(20, 20, 20))
+	buf = BytesIO()
+	img.save(buf, format='PNG')
+	url = upload_png('stub/inpaint.png', buf)
+	return {"output_url": url, "preview_urls": [], "echo": {"maskUrl": mask_url}}
 
 @app.post('/infer/controlnet')
 async def controlnet(request: Request):
-	_ = await request.json()
-	return {"output_url": None, "preview_urls": []}
+	body = await request.json()
+	ctrl = body.get('controlnet', {})
+	ctype = ctrl.get('type')
+	img = Image.new('RGB', (64, 64), color=(30, 30, 30))
+	buf = BytesIO()
+	img.save(buf, format='PNG')
+	url = upload_png(f'stub/controlnet_{ctype or "none"}.png', buf)
+	return {"output_url": url, "preview_urls": [], "echo": {"controlnet": ctrl}}
