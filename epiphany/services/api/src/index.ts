@@ -35,7 +35,9 @@ app.use((req, res, next) => {
 		next(err)
 	})
 })
-app.use(cors(env.WEB_ORIGIN ? { origin: env.WEB_ORIGIN, exposedHeaders: ['X-Request-Id','X-RateLimit-Limit','X-RateLimit-Window'] } : undefined))
+const corsOptions = env.WEB_ORIGIN ? { origin: env.WEB_ORIGIN, exposedHeaders: ['X-Request-Id','X-RateLimit-Limit','X-RateLimit-Window','X-RateLimit-Remaining','X-RateLimit-Reset','Retry-After'] } : undefined
+app.use(cors(corsOptions))
+app.options('*', cors(corsOptions))
 app.use(express.json({ limit: '2mb' }))
 app.use(compression())
 
@@ -48,8 +50,6 @@ app.get('/v1/health', async (_req, res) => {
 	const summary = await healthSummary(env)
 	res.json(summary)
 })
-
-app.head('/v1/healthz', (_req, res) => res.status(200).end())
 
 app.get('/v1/version', (_req, res) => {
 	res.json({ name: 'epiphany', version: process.env.npm_package_version || '0.1.0' })
@@ -64,6 +64,23 @@ app.get('/v1/config', (_req, res) => {
 	})
 })
 
+app.get('/v1/rate-limit', (_req, res) => {
+	res.json({ max: env.RATE_LIMIT_MAX || 120, windowMs: env.RATE_LIMIT_WINDOW_MS || 60_000 })
+})
+
+app.get('/v1/time', (_req, res) => res.json({ now: new Date().toISOString() }))
+app.get('/v1/ping', (_req, res) => res.json({ pong: true }))
+app.get('/v1/system', async (_req, res) => {
+	const health = await healthSummary(env)
+	const version = { name: 'epiphany', version: process.env.npm_package_version || '0.1.0' }
+	const config = {
+		webOrigin: env.WEB_ORIGIN || null,
+		allowNswf: !!env.ALLOW_NSWF,
+		rateLimit: { max: env.RATE_LIMIT_MAX || 120, windowMs: env.RATE_LIMIT_WINDOW_MS || 60_000 },
+		s3: { endpoint: env.S3_ENDPOINT || null, region: env.S3_REGION || null, bucket: env.S3_BUCKET || null, inputsBucket: env.S3_INPUTS_BUCKET || env.S3_BUCKET || null },
+	}
+	res.json({ health, version, config })
+})
 app.get('/v1/_routes', (req, res) => {
 	const list: any[] = []
 	function collect(stack: any[], base = '') {
@@ -79,6 +96,9 @@ app.get('/v1/_routes', (req, res) => {
 	res.json({ routes: list })
 })
 
+const startedAt = Date.now()
+app.get('/v1/uptime', (_req, res) => res.json({ startedAt, uptimeMs: Date.now() - startedAt }))
+
 app.post('/v1/enhance', (req, res) => {
 	const raw = String((req.body?.prompt ?? '')).trim()
 	let prompt = raw
@@ -88,23 +108,6 @@ app.post('/v1/enhance', (req, res) => {
 	const seedPhrases = prompt ? [prompt.split(',')[0].trim()].filter(Boolean) : []
 	res.json({ promptEnhanced: prompt || 'a detailed high-quality image, cinematic, high detail', seedPhrases })
 })
-
-app.get('/v1/ping', (_req, res) => res.json({ pong: true }))
-app.get('/v1/time', (_req, res) => res.json({ now: new Date().toISOString() }))
-app.get('/v1/system', async (_req, res) => {
-	const health = await healthSummary(env)
-	const version = { name: 'epiphany', version: process.env.npm_package_version || '0.1.0' }
-	const config = {
-		webOrigin: env.WEB_ORIGIN || null,
-		allowNswf: !!env.ALLOW_NSWF,
-		rateLimit: { max: env.RATE_LIMIT_MAX || 120, windowMs: env.RATE_LIMIT_WINDOW_MS || 60_000 },
-		s3: { endpoint: env.S3_ENDPOINT || null, region: env.S3_REGION || null, bucket: env.S3_BUCKET || null, inputsBucket: env.S3_INPUTS_BUCKET || env.S3_BUCKET || null },
-	}
-	res.json({ health, version, config })
-})
-
-const startedAt = Date.now()
-app.get('/v1/uptime', (_req, res) => res.json({ startedAt, uptimeMs: Date.now() - startedAt }))
 
 app.use('/v1', urlAllowlist())
 app.use('/v1', routes)
