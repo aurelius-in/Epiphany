@@ -696,4 +696,22 @@ r.get('/generations/filter', async (req, res) => {
 	res.json({ items, nextPage })
 })
 
+r.get('/retention/config', (_req, res) => {
+	const env = require('./env') as any
+	try { const { getEnv } = require('./env'); const e = getEnv(); return res.json({ days: e.RETENTION_DAYS || null }) } catch { return res.json({ days: null }) }
+})
+
+r.post('/retention/run', async (_req, res) => {
+	try {
+		const { getEnv } = await import('./env')
+		const e = getEnv()
+		const days = e.RETENTION_DAYS || 0
+		if (!days) return res.status(400).json({ error: 'retention_not_configured' })
+		const job = await queues.retention.add('purge', { days }, { removeOnComplete: true, removeOnFail: true })
+		return res.json({ id: job.id, days })
+	} catch (e: any) {
+		return res.status(500).json({ error: String(e?.message || e) })
+	}
+})
+
 export const routes = r
