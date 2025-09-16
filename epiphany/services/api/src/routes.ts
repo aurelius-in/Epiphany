@@ -395,4 +395,78 @@ r.get('/queues', async (_req, res) => {
 	res.json({ queues: out })
 })
 
+r.get('/errors', async (req, res) => {
+	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
+	const limit = Math.max(1, Math.min(100, parseInt(String(req.query.limit || '50')) || 50))
+	const items = await prisma.generation.findMany({ where: { status: 'failed' } as any, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
+	const nextPage = items.length === limit ? page + 1 : undefined
+	res.json({ items, nextPage })
+})
+
+r.post('/retry/:id', async (req, res) => {
+	const id = String(req.params.id)
+	const gen = await prisma.generation.findUnique({ where: { id } }).catch(() => null)
+	if (!gen) return res.status(404).json({ error: 'not_found' })
+	if (gen.kind === 'image') {
+		const data: any = {
+			prompt: gen.inputPrompt,
+			negativePrompt: gen.negativePrompt || undefined,
+			mode: gen.mode,
+			stylePreset: gen.stylePreset || undefined,
+			aspect: gen.aspect || undefined,
+			steps: gen.steps || undefined,
+			cfg: gen.cfg || undefined,
+			seed: gen.seed != null ? Number(gen.seed) : null,
+			modelId: gen.modelId || undefined,
+			controlnet: gen.controlnet || undefined,
+			initImageUrl: gen.initImageUrl || undefined,
+			maskUrl: gen.maskUrl || undefined,
+			preview: false,
+		}
+		const newGen = await prisma.generation.create({ data: {
+			...gen,
+			id: undefined as any,
+			status: 'queued',
+			outputUrl: null as any,
+			previewUrls: [],
+			durationMs: null as any,
+			modelHash: null as any,
+			safety: null as any,
+			error: null as any,
+			createdAt: undefined as any,
+			updatedAt: undefined as any,
+		} as any })
+		await prisma.event.create({ data: { generationId: newGen.id, type: 'retry', payload: { from: id } as any } })
+		const job = await queues.generate_image.add('generate', { ...data, generationId: newGen.id }, { removeOnComplete: true, removeOnFail: true })
+		return res.json({ id: job.id, generationId: newGen.id })
+	}
+	if (gen.kind === 'video') {
+		const data: any = {
+			prompt: gen.inputPrompt,
+			mode: gen.mode,
+			resolution: gen.aspect || undefined,
+			seed: gen.seed != null ? Number(gen.seed) : null,
+			modelId: gen.modelId || undefined,
+			sourceImageUrl: gen.initImageUrl || undefined,
+		}
+		const newGen = await prisma.generation.create({ data: {
+			...gen,
+			id: undefined as any,
+			status: 'queued',
+			outputUrl: null as any,
+			previewUrls: [],
+			durationMs: null as any,
+			modelHash: null as any,
+			safety: null as any,
+			error: null as any,
+			createdAt: undefined as any,
+			updatedAt: undefined as any,
+		} as any })
+		await prisma.event.create({ data: { generationId: newGen.id, type: 'retry', payload: { from: id } as any } })
+		const job = await queues.generate_video.add('generate', { ...data, generationId: newGen.id }, { removeOnComplete: true, removeOnFail: true })
+		return res.json({ id: job.id, generationId: newGen.id })
+	}
+	return res.status(400).json({ error: 'unsupported_kind' })
+})
+
 export const routes = r

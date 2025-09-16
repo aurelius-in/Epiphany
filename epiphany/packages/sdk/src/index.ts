@@ -219,4 +219,15 @@ export async function refreshExplain(baseUrl: string, apiKey: string, id: string
 	return await r.json()
 }
 
+export async function listErrors(baseUrl: string, apiKey: string, page = 1, limit = 50) {
+	const q = new URLSearchParams({ page: String(page), limit: String(limit) })
+	const r = await fetch(`${baseUrl}/v1/errors?${q.toString()}`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function retryGeneration(baseUrl: string, apiKey: string, id: string) {
+	const r = await fetch(`${baseUrl}/v1/retry/${id}`, { method: 'POST', headers: headers(apiKey) })
+	return await r.json()
+}
+
 export type { z } from 'zod'
