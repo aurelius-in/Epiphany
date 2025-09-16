@@ -181,7 +181,7 @@
       <div class="panel card">
         <div class="panel-title">Result</div>
         <div class="panel-body result-body" id="resultBody">
-          <!-- Preloaded demo output -->
+          <!-- Preloaded output -->
           <img id="resultImg" class="result-img" src="gen-ai.gif" alt="Generated result">
         </div>
         <div class="result-meta" id="resultMeta">
@@ -371,7 +371,7 @@
       document.getElementById('resultPanel')?.scrollIntoView({behavior:'smooth', block:'start'});
     });
 
-    // Optional demo helpers
+    // Optional helpers
     document.getElementById('btnRandomSeed')?.addEventListener('click', (e) => {
       e.preventDefault();
       const r = Math.floor(Math.random()*1e9);

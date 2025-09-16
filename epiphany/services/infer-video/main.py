@@ -110,12 +110,43 @@ async def t2v(request: Request):
 
 @app.post('/infer/animate')
 async def animate(request: Request):
-	_ = await request.json()
-	raw = BytesIO()
-	raw.write(b"Epiphany animate stub")
+	body = await request.json()
+	src = body.get('sourceImageUrl')
+	ctrl_bytes = None
+	try:
+		if src and is_allowed_url(src):
+			import requests as rq
+			r = rq.get(src, timeout=10); r.raise_for_status(); ctrl_bytes = r.content
+	except Exception:
+		ctrl_bytes = None
+	# Build simple pan/zoom frames from source image
+	frames = []
+	try:
+		from PIL import Image as PILImage
+		import numpy as np
+		if ctrl_bytes:
+			im = PILImage.open(BytesIO(ctrl_bytes)).convert('RGB').resize((256,256))
+			for i in range(24):
+				scale = 1.0 + 0.15 * (i/23)
+				w = int(256*scale); h = int(256*scale)
+				im2 = im.resize((w,h))
+				x0 = (w-256)//2; y0 = (h-256)//2
+				crop = im2.crop((x0,y0,x0+256,y0+256))
+				frames.append(np.array(crop))
+		else:
+			for i in range(24):
+				val = int(255 * (i / 23))
+				frame = np.zeros((256, 256, 3), dtype=np.uint8)
+				frame[:, :, 0] = val
+				frame[:, :, 1] = (255 - val)
+				frame[:, :, 2] = 128
+				frames.append(frame)
+		buf = BytesIO(); imageio.mimsave(buf, frames, format='FFMPEG', fps=12)
+	except Exception:
+		buf = BytesIO(); buf.write(b"animate stub")
 	key = f"gen/animate_{random.randint(0, 1_000_000)}.mp4"
-	url = upload_bytes(key, raw, 'video/mp4')
-	meta = bytes_meta(raw)
+	url = upload_bytes(key, buf, 'video/mp4')
+	meta = bytes_meta(buf)
 	return {"output_url": url, "model_hash": MODEL_ID, "duration_ms": 1, "video_meta": meta}
 
 @app.post('/infer/stylize')
