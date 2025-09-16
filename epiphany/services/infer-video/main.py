@@ -105,7 +105,25 @@ async def t2v(request: Request):
 	fps = int(body.get('fps') or 12)
 	resolution = str(body.get('resolution') or '576p')
 	duration_sec = int(body.get('durationSec') or 4)
+	model_id = str(body.get('modelId') or 'svd')
 	raw = try_t2v_with_svd(prompt, fps=fps, resolution=resolution, duration_sec=duration_sec) or BytesIO()
+	# If ModelScope requested and no real model, synthesize a different color pattern
+	if model_id != 'svd' and raw.getbuffer().nbytes > 0:
+		try:
+			w, h = (1024, 576) if resolution == '576p' else (1280, 720)
+			total = max(1, fps * duration_sec)
+			frames = []
+			for i in range(total):
+				den = max(1, total-1)
+				t = i/den
+				frame = np.zeros((h, w, 3), dtype=np.uint8)
+				frame[:, :, 0] = int(255 * (t))
+				frame[:, :, 1] = int(255 * (1-t))
+				frame[:, :, 2] = 64
+				frames.append(frame)
+			raw = BytesIO(); imageio.mimsave(raw, frames, format='FFMPEG', fps=fps)
+		except Exception:
+			pass
 	if raw.getbuffer().nbytes == 0:
 		raw.write(b"Epiphany video stub")
 	key = f"gen/t2v_{random.randint(0, 1_000_000)}.mp4"
