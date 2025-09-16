@@ -32,6 +32,16 @@ export async function getJob(baseUrl: string, apiKey: string, id: string) {
 	return jobRes.parse(j)
 }
 
+export async function streamJob(baseUrl: string, apiKey: string, id: string, onEvent: (ev: any) => void) {
+	const url = `${baseUrl}/v1/jobs/${id}/stream`
+	const es = new EventSource(url, { withCredentials: false } as any)
+	es.onmessage = (e) => {
+		try { onEvent(JSON.parse(e.data)) } catch { /* noop */ }
+	}
+	es.onerror = () => { es.close() }
+	return es
+}
+
 const aspectEnum = z.enum(["1:1","16:9","9:16","3:2","2:3"]) as unknown as z.ZodEnum<["1:1","16:9","9:16","3:2","2:3"]>
 
 export const genImageReq = z.object({

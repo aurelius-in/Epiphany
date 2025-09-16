@@ -316,13 +316,17 @@
       }
 
       async function pollJob(id){
-        for (let i=0; i<120; i++){
-          const st = await getJson(`${API_BASE}/v1/jobs/${id}`);
-          if (st.status === 'succeeded' || st.outputUrl) return st;
-          if (st.status === 'failed') throw new Error(st.error || 'Job failed');
-          await sleep(1500);
-        }
-        throw new Error('Timeout');
+        const st = await getJson(`${API_BASE}/v1/jobs/${id}`);
+        return st;
+      }
+
+      function subscribeJob(id, onUpdate){
+        try{
+          const es = new EventSource(`${API_BASE}/v1/jobs/${id}/stream`);
+          es.onmessage = (e) => { try{ onUpdate(JSON.parse(e.data)); }catch(_){} };
+          es.onerror = () => { es.close(); };
+          return es;
+        }catch(_){ return null }
       }
 
       function ensureEditButtons(){
@@ -400,33 +404,27 @@
           };
           const j = await postJson(`${API_BASE}/v1/generate/image`, body);
           window.lastJobId = j.id;
+          let done = false;
+          const es = subscribeJob(j.id, (ev) => {
+            if (ev.progress != null) {
+              resultBody.innerHTML = `<div class=\"result-placeholder\">Progress: ${ev.progress}%</div>`;
+            }
+            if (ev.done && !done) { done = true; }
+          });
           const st = await pollJob(j.id);
+          if (es) es.close();
           if (st.outputUrl){
             resultBody.innerHTML = '';
             resultImg.src = st.outputUrl;
             resultBody.appendChild(resultImg);
+            if (Array.isArray(st.previewUrls) && st.previewUrls.length) {
+              const pwrap = document.createElement('div'); pwrap.style.display='flex'; pwrap.style.gap='6px'; pwrap.style.marginTop='8px';
+              for (const p of st.previewUrls) { const im = document.createElement('img'); im.src = p; im.style.width='64px'; im.style.height='64px'; im.style.objectFit='cover'; im.style.border='1px solid #26262a'; im.style.borderRadius='6px'; pwrap.appendChild(im); }
+              resultBody.appendChild(pwrap);
+            }
             if (historyList){
               const li = document.createElement('li'); li.className='history-item';
               const a = document.createElement('a'); a.href = st.outputUrl; a.target = '_blank'; a.rel='noreferrer'; a.textContent = body.prompt.slice(0,80) || 'result';
               li.appendChild(a);
               if (st.explainId){
-                const ex = document.createElement('a'); ex.href = `/explain/${st.explainId}`; ex.target='_blank'; ex.style.marginLeft='8px'; ex.textContent='Explain';
-                li.appendChild(ex);
-              }
-              historyList.prepend(li);
-            }
-            if (captionChip){ captionChip.style.display='none'; captionChip.querySelector('strong').textContent=''; }
-          }
-        } catch (err){
-          resultBody.innerHTML = `<div class=\"result-placeholder\">Error: ${String(err)}</div>`;
-        }
-      }
-
-      genBtn?.addEventListener('click', async (e) => {
-        e.preventDefault();
-        await onGenerate();
-      });
-    })();
-  </script>
-</body>
-</html>
+                const ex = document.createElement('a'); ex.href = `/explain/${st.explainId}`
