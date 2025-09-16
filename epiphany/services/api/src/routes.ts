@@ -140,7 +140,9 @@ r.get('/jobs/:id', async (req, res) => {
 	const state = await job.getState()
 	const progress = (job.progress as any) || 0
 	const result = (await job.getReturnValue().catch(() => null)) as any
-	res.json({ id, status: state, progress, outputUrl: result?.output_url, previewUrls: result?.preview_urls, explainId: result?.explain_id })
+	const failedReason = (job as any).failedReason || undefined
+	const statusMap: Record<string,string> = { waiting: 'queued', delayed: 'queued', active: 'running', completed: 'succeeded', failed: 'failed', paused: 'queued' }
+	res.json({ id, status: statusMap[state] || state, progress, outputUrl: result?.output_url, previewUrls: result?.preview_urls, explainId: result?.explain_id, error: failedReason })
 })
 
 r.get('/generations', async (req, res) => {
