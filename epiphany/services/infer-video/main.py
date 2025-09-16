@@ -72,22 +72,24 @@ def load_svd():
 	except Exception:
 		return None
 
-def try_t2v_with_svd(prompt: str) -> Optional[BytesIO]:
+def try_t2v_with_svd(prompt: str, fps: int = 12, resolution: str = '576p') -> Optional[BytesIO]:
 	pipe = load_svd()
 	if pipe is None:
 		return None
 	try:
-		# Generate simple frame sequence placeholder (solid color gradient)
+		# Generate simple frame sequence placeholder (solid color gradient) honoring fps/resolution
+		w, h = (1024, 576) if resolution == '576p' else (1280, 720)
+		num_frames = fps * 2  # ~2s clip
 		frames = []
-		for i in range(24):
-			val = int(255 * (i / 23))
-			frame = np.zeros((256, 256, 3), dtype=np.uint8)
+		for i in range(max(1, num_frames)):
+			val = int(255 * (i / max(1, num_frames - 1)))
+			frame = np.zeros((h, w, 3), dtype=np.uint8)
 			frame[:, :, 0] = val
 			frame[:, :, 1] = (255 - val)
 			frame[:, :, 2] = 128
 			frames.append(frame)
 		buf = BytesIO()
-		imageio.mimsave(buf, frames, format='FFMPEG', fps=12)
+		imageio.mimsave(buf, frames, format='FFMPEG', fps=fps)
 		return buf
 	except Exception:
 		return None
@@ -100,7 +102,9 @@ async def health():
 async def t2v(request: Request):
 	body = await request.json()
 	prompt = body.get('prompt', '')
-	raw = try_t2v_with_svd(prompt) or BytesIO()
+	fps = int(body.get('fps') or 12)
+	resolution = str(body.get('resolution') or '576p')
+	raw = try_t2v_with_svd(prompt, fps=fps, resolution=resolution) or BytesIO()
 	if raw.getbuffer().nbytes == 0:
 		raw.write(b"Epiphany video stub")
 	key = f"gen/t2v_{random.randint(0, 1_000_000)}.mp4"
