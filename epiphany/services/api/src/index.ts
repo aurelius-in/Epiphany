@@ -2,6 +2,8 @@
 import express from 'express'
 import cors from 'cors'
 import morgan from 'morgan'
+import pino from 'pino'
+import pinoHttp from 'pino-http'
 import compression from 'compression'
 import helmet from 'helmet'
 import { getEnv } from './env'
@@ -12,6 +14,7 @@ import { startWorkers } from './workers'
 
 const env = getEnv()
 const app = express()
+const logger = pino({ level: process.env.LOG_LEVEL || 'info' })
 
 app.disable('x-powered-by')
 app.use(helmet())
@@ -24,6 +27,14 @@ app.use((_, res, next) => {
 
 app.use(requestId)
 app.use((req, res, next) => { res.setHeader('X-Request-Id', (req as any).id || ''); next() })
+app.use(pinoHttp({
+  logger,
+  genReqId: (req: any) => req.id,
+  serializers: {
+    req: (req: any) => ({ method: req.method, url: req.url, id: req.id }),
+    res: (res: any) => ({ statusCode: res.statusCode }),
+  },
+}))
 app.use((req, res, next) => {
 	const orig = tinyRateLimit(env.RATE_LIMIT_MAX || 120, env.RATE_LIMIT_WINDOW_MS || 60_000)
 	return orig(req as any, res as any, (err?: any) => {
