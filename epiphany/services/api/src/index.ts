@@ -36,6 +36,13 @@ app.use(pinoHttp({
   },
 }))
 app.use((req, res, next) => {
+  const start = Date.now()
+  res.on('finish', () => {
+    try { (req as any).log?.info({ requestId: (req as any).id, durationMs: Date.now() - start }, 'request_finished') } catch {}
+  })
+  next()
+})
+app.use((req, res, next) => {
 	const orig = tinyRateLimit(env.RATE_LIMIT_MAX || 120, env.RATE_LIMIT_WINDOW_MS || 60_000)
 	return orig(req as any, res as any, (err?: any) => {
 		try {
