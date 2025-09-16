@@ -61,7 +61,7 @@ async function processGenerateVideo(job: Job) {
 		const resp = await postJson<any>(endpoint, job.data)
 		await job.updateProgress(90)
 		const durationMs = resp.duration_ms || (Date.now() - t0)
-		await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'succeeded', outputUrl: resp.output_url || null, durationMs, modelHash: resp.model_hash || null } })
+		await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'succeeded', outputUrl: resp.output_url || null, durationMs, modelHash: resp.model_hash || null, safety: (resp as any).safety_scores || null } })
 		await prisma.event.create({ data: { generationId: job.data.generationId, type: 'succeeded', payload: { jobId: job.id, durationMs, requestId: (job.data as any)?.requestId } as any } })
 		if (resp.output_url) {
 			const meta = (resp as any).video_meta || {}

@@ -801,6 +801,10 @@
             resultBody.innerHTML = '';
             const v = document.createElement('video'); v.src = st.outputUrl; v.controls = true; v.style.width='100%';
             resultBody.appendChild(v);
+            const dlWrap = document.createElement('div'); dlWrap.style.marginTop = '8px';
+            const a = document.createElement('a'); a.href = st.outputUrl; a.textContent = 'Download'; a.target = '_blank'; a.rel = 'noreferrer'; a.className = 'btn-ghost';
+            dlWrap.appendChild(a);
+            resultBody.appendChild(dlWrap);
           }
         }catch(e){ try{ showToast('Video failed', { type:'error' }) }catch(_){} }
       }

@@ -368,4 +368,9 @@ export async function runRetention(baseUrl: string, apiKey: string) {
 	return await r.json()
 }
 
+export async function previewRetention(baseUrl: string, apiKey: string) {
+	const r = await fetch(`${baseUrl}/v1/retention/preview`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
 export type { z } from 'zod'

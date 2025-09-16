@@ -67,6 +67,9 @@ const genImageSchema = z.object({
 r.post('/generate/image', async (req, res) => {
 	const body = genImageSchema.parse(req.body)
 	const modeFinal = body.mode === 2 && !env.ALLOW_NSWF ? 1 : body.mode
+	// Basic prompt safety gating in Safe mode
+	const unsafe = /(nsfw|nude|nudity|explicit|adult)/i.test(body.prompt || '')
+	if (!env.ALLOW_NSWF && modeFinal === 0 && unsafe) return res.status(400).json({ error: 'unsafe_prompt' })
 	const generation = await prisma.generation.create({ data: {
 		kind: 'image',
 		status: 'queued',
@@ -109,6 +112,9 @@ const genVideoSchema = z.object({
 r.post('/generate/video', async (req, res) => {
 	const body = genVideoSchema.parse(req.body)
 	const modeFinal = body.mode === 2 && !env.ALLOW_NSWF ? 1 : body.mode
+	// Basic prompt safety gating in Safe mode
+	const unsafe = /(nsfw|nude|nudity|explicit|adult)/i.test(body.prompt || '')
+	if (!env.ALLOW_NSWF && modeFinal === 0 && unsafe) return res.status(400).json({ error: 'unsafe_prompt' })
 	const generation = await prisma.generation.create({ data: {
 		kind: 'video',
 		status: 'queued',

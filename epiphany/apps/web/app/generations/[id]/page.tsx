@@ -107,6 +107,7 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 						<li>Model: {gen.modelId}</li>
 						<li>Steps/CFG: {gen.steps ?? '-'} / {gen.cfg ?? '-'}</li>
 						<li>Seed: {gen.seed ?? '-'}</li>
+						<li>Safety: {gen.safety && (typeof (gen.safety as any).nsfw === 'number') ? `nsfw=${(gen.safety as any).nsfw}` : 'n/a'}</li>
 					</ul>
 					<div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
 						<label style={{display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color:'#a4a4ad'}}>
@@ -130,6 +131,11 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 									<button key={idx} onClick={()=>setSelectedToken(String(t.token))} style={{background: selectedToken===String(t.token)?'#2a2a34':'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'4px 8px', borderRadius:8}}>{String(t.token)}<span style={{marginLeft:6, color:'#7c7c86', fontSize:11}}>{Math.round((Number(t.score)||0)*100)/100}</span></button>
 								))}
 							</div>
+							{explain?.heatmapUrls && explain.heatmapUrls[0] && (
+								<div style={{marginTop:8}}>
+									<a href={explain.heatmapUrls[0]} target="_blank" rel="noreferrer" style={{color:'#cfd0ff'}}>Download Explain Overlay</a>
+								</div>
+							)}
 						</div>
 					)}
 					{gen.outputUrl && <div style={{marginTop:8, fontSize:12}}>Output URL: <a href={gen.outputUrl} target="_blank" style={{color:'#cfd0ff'}}>{gen.outputUrl}</a> <button onClick={()=>{ try{ navigator.clipboard.writeText(gen.outputUrl || '') }catch{} }} style={{marginLeft:8, fontSize:12}}>Copy</button></div>}
