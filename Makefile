@@ -15,3 +15,6 @@ web:
 
 infer-image:
 	cd epiphany/services/infer-image && uvicorn main:app --host 0.0.0.0 --port 8001
+
+buckets:
+	bash epiphany/ops/scripts/minio-buckets.sh

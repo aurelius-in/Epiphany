@@ -11,6 +11,7 @@ export type AppEnv = {
 	S3_BUCKET?: string
 	API_KEY?: string
 	ALLOW_NSWF?: boolean
+	WEB_ORIGIN?: string
 }
 
 export function getEnv(): AppEnv {
@@ -25,5 +26,6 @@ export function getEnv(): AppEnv {
 		S3_BUCKET: process.env.S3_BUCKET,
 		API_KEY: process.env.API_KEY,
 		ALLOW_NSWF: String(process.env.ALLOW_NSWF || 'false').toLowerCase() === 'true',
+		WEB_ORIGIN: process.env.WEB_ORIGIN,
 	}
 }
