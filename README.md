@@ -77,6 +77,8 @@ Headers: `X-API-Key: <string>`, `Content-Type: application/json`
 - HEAD   `/v1/jobs/:id` → 200 if job exists
 - GET  `/v1/generations` → recent history (paginated; supports `?signed=1&ttl=900`)
 - GET  `/v1/generations/search` → search by prompt substring (`?q=`)
+- GET  `/v1/generations/filter` → filter by modelId/stylePreset
+- GET  `/v1/tags` → lists available `models[]` and `styles[]`
 - GET  `/v1/generations/:id/events` → events for a generation
 - GET  `/v1/explain/:id` → token scores + heatmap URLs
 - GET  `/v1/events` → recent events (filter by `generationId`)

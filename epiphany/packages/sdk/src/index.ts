@@ -336,4 +336,19 @@ export async function searchGenerations(baseUrl: string, apiKey: string, qstr: s
 	return await r.json()
 }
 
+export async function getTags(baseUrl: string, apiKey: string) {
+	const r = await fetch(`${baseUrl}/v1/tags`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function filterGenerations(baseUrl: string, apiKey: string, params: { modelId?: string, stylePreset?: string, page?: number, limit?: number }) {
+	const q = new URLSearchParams()
+	if (params.modelId) q.set('modelId', params.modelId)
+	if (params.stylePreset) q.set('stylePreset', params.stylePreset)
+	q.set('page', String(params.page ?? 1))
+	q.set('limit', String(params.limit ?? 50))
+	const r = await fetch(`${baseUrl}/v1/generations/filter?${q.toString()}`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
 export type { z } from 'zod'

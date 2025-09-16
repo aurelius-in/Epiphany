@@ -28,13 +28,25 @@ export default function GalleryPage() {
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [q, setQ] = useState('')
+	const [models, setModels] = useState<string[]>([])
+	const [styles, setStyles] = useState<string[]>([])
+	const [modelId, setModelId] = useState('')
+	const [stylePreset, setStylePreset] = useState('')
 
 	async function load(p = 1) {
 		setLoading(true)
 		try {
-			const url = q?
-				`/api/proxy/v1/generations/search?q=${encodeURIComponent(q)}&page=${p}&limit=24` :
-				`/api/proxy/v1/generations?page=${p}&limit=24&signed=1&ttl=900`
+			let url = ''
+			if (q) {
+				url = `/api/proxy/v1/generations/search?q=${encodeURIComponent(q)}&page=${p}&limit=24`
+			} else if (modelId || stylePreset) {
+				const params = new URLSearchParams({ page: String(p), limit: '24' })
+				if (modelId) params.set('modelId', modelId)
+				if (stylePreset) params.set('stylePreset', stylePreset)
+				url = `/api/proxy/v1/generations/filter?${params.toString()}`
+			} else {
+				url = `/api/proxy/v1/generations?page=${p}&limit=24&signed=1&ttl=900`
+			}
 			const res = await fetch(url)
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
 			const data: ListRes = await res.json()
@@ -49,6 +61,7 @@ export default function GalleryPage() {
 	}
 
 	useEffect(() => { load(1) }, [])
+	useEffect(() => { (async () => { try { const r = await fetch('/api/proxy/v1/tags'); const j = await r.json(); setModels(j.models || []); setStyles(j.styles || []) } catch {} })() }, [])
 
 	function recreateHref(g: Generation) {
 		const q = new URLSearchParams()
@@ -73,9 +86,18 @@ export default function GalleryPage() {
 	return (
 		<div style={{padding: 16}}>
 			<h1 style={{marginBottom: 12}}>Gallery</h1>
-			<div style={{display:'flex', gap:8, alignItems:'center', marginBottom:12}}>
+			<div style={{display:'flex', gap:8, alignItems:'center', marginBottom:12, flexWrap:'wrap'}}>
 				<input placeholder="Search prompt…" value={q} onChange={e=>setQ(e.target.value)} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8, width:'280px'}} />
 				<button onClick={()=>load(1)} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Search</button>
+				<select value={modelId} onChange={e=>setModelId(e.target.value)} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>
+					<option value="">All models</option>
+					{models.map(m => <option key={m} value={m}>{m}</option>)}
+				</select>
+				<select value={stylePreset} onChange={e=>setStylePreset(e.target.value)} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>
+					<option value="">All styles</option>
+					{styles.map(s => <option key={s} value={s}>{s}</option>)}
+				</select>
+				<button onClick={()=>{ setQ(''); load(1) }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Apply Filters</button>
 			</div>
 			{loading && page === 1 && <div>Loading…</div>}
 			{error && <div style={{color:'tomato'}}>Error: {error}</div>}

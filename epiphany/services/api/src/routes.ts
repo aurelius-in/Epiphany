@@ -607,4 +607,23 @@ r.get('/stats/daily.csv', async (req, res) => {
 	res.send(csv)
 })
 
+r.get('/tags', async (_req, res) => {
+	const modelRows = await (prisma as any).$queryRawUnsafe(`SELECT DISTINCT "modelId" FROM "Generation" WHERE "modelId" IS NOT NULL ORDER BY 1`)
+	const styleRows = await (prisma as any).$queryRawUnsafe(`SELECT DISTINCT "stylePreset" FROM "Generation" WHERE "stylePreset" IS NOT NULL ORDER BY 1`)
+	const models = Array.isArray(modelRows) ? modelRows.map((r: any) => r.modelId) : []
+	const styles = Array.isArray(styleRows) ? styleRows.map((r: any) => r.stylePreset) : []
+	res.json({ models, styles })
+})
+
+r.get('/generations/filter', async (req, res) => {
+	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
+	const limit = Math.max(1, Math.min(100, parseInt(String(req.query.limit || '50')) || 50))
+	const where: any = {}
+	if (req.query.modelId) where.modelId = String(req.query.modelId)
+	if (req.query.stylePreset) where.stylePreset = String(req.query.stylePreset)
+	const items = await prisma.generation.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
+	const nextPage = items.length === limit ? page + 1 : undefined
+	res.json({ items, nextPage })
+})
+
 export const routes = r
