@@ -73,6 +73,7 @@ Headers: `X-API-Key: <string>`, `Content-Type: application/json`
 - GET  `/v1/generations` → recent history (paginated)
 - GET  `/v1/explain/:id` → token scores + heatmap URLs
 - GET  `/v1/events` → recent events (filter by `generationId`)
+- GET  `/v1/assets` → recent assets (paginated, `?signed=1`)
 - GET  `/v1/health` → `{ ok, services:{db,redis,s3,infer_image,infer_video,edit,explain} }`
 - GET  `/v1/version` → `{ name, version }`
 

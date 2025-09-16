@@ -288,4 +288,17 @@ r.get('/assets', async (req, res) => {
 	res.json({ items: mapped, nextPage })
 })
 
+r.delete('/assets', async (req, res) => {
+	const body = z.object({ id: z.string().optional(), url: z.string().url().optional() }).parse(req.body || {})
+	let where: any = {}
+	if (body.id) where.id = body.id
+	if (body.url) where.url = body.url
+	if (!where.id && !where.url) return res.status(400).json({ error: 'missing_id_or_url' })
+	const asset = await prisma.asset.findFirst({ where }).catch(() => null)
+	if (!asset) return res.status(404).json({ error: 'not_found' })
+	try { await (await import('./s3')).deleteObjectByUrl(asset.url) } catch {}
+	await prisma.asset.delete({ where: { id: asset.id } })
+	res.json({ ok: true })
+})
+
 export const routes = r

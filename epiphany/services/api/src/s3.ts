@@ -32,3 +32,29 @@ export function publicUrlFor(key: string, useInputsBucket = false): string {
 	const bucket = useInputsBucket ? (env.S3_INPUTS_BUCKET || env.S3_BUCKET) : env.S3_BUCKET
 	return `http://${endpoint}/${bucket}/${key}`
 }
+
+function parseBucketKeyFromUrl(url: string): { bucket: string, key: string } | null {
+	if (!env.S3_ENDPOINT) return null
+	const endpoint = env.S3_ENDPOINT.replace(/\/$/, '')
+	const prefix = `${endpoint}/`
+	if (!url.startsWith(prefix)) return null
+	const rest = url.slice(prefix.length)
+	const slash = rest.indexOf('/')
+	if (slash < 0) return null
+	const bucket = rest.slice(0, slash)
+	const key = rest.slice(slash + 1)
+	return { bucket, key }
+}
+
+export function signPublicUrl(url: string, expiresSeconds = 3600): string {
+	const parsed = parseBucketKeyFromUrl(url)
+	if (!parsed) return url
+	return (s3 as any).getSignedUrl('getObject', { Bucket: parsed.bucket, Key: parsed.key, Expires: expiresSeconds })
+}
+
+export async function deleteObjectByUrl(url: string): Promise<boolean> {
+	const parsed = parseBucketKeyFromUrl(url)
+	if (!parsed) return false
+	await (s3 as any).deleteObject({ Bucket: parsed.bucket, Key: parsed.key }).promise()
+	return true
+}

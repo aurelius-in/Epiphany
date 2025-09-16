@@ -181,4 +181,10 @@ export async function listGenerationEvents(baseUrl: string, apiKey: string, gene
 	return z.object({ items: z.array(z.any()), nextPage: z.number().optional() }).parse(j)
 }
 
+export async function deleteAsset(baseUrl: string, apiKey: string, args: { id?: string, url?: string }) {
+	const r = await fetch(`${baseUrl}/v1/assets`, { method: 'DELETE', headers: headers(apiKey), body: JSON.stringify(args) })
+	const j = await r.json()
+	return z.object({ ok: z.boolean() }).parse(j)
+}
+
 export type { z } from 'zod'
