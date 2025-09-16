@@ -23,7 +23,10 @@ app.use(requestId)
 app.use(tinyRateLimit())
 app.use(cors(env.WEB_ORIGIN ? { origin: env.WEB_ORIGIN } : undefined))
 app.use(express.json({ limit: '2mb' }))
-app.use(morgan('dev'))
+
+morgan.token('rid', (req: any) => req.id)
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms rid=:rid'))
+
 app.use(apiKeyAuth(env.API_KEY))
 
 app.get('/v1/health', async (_req, res) => {
