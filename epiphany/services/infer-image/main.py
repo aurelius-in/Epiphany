@@ -22,7 +22,7 @@ s3 = boto3.client('s3', endpoint_url=S3_ENDPOINT, aws_access_key_id=S3_ACCESS_KE
 _pipe = None
 _diffusers_available = False
 try:
-    from diffusers import StableDiffusionXLPipeline
+    from diffusers import StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline
     import torch
     _diffusers_available = True
 except Exception:
@@ -145,6 +145,39 @@ def try_generate_with_diffusers(prompt: str, width: int, height: int, steps: int
     except Exception:
         return None
 
+def try_img2img_with_diffusers(prompt: str, init_bytes: bytes | None, strength: float, steps: int, cfg: float, width: int, height: int) -> BytesIO | None:
+    if not _diffusers_available or not init_bytes:
+        return None
+    try:
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        pipe = StableDiffusionXLImg2ImgPipeline.from_pretrained(os.getenv('SDXL_MODEL', 'stabilityai/stable-diffusion-xl-base-1.0'))
+        if device == 'cuda':
+            pipe = pipe.to(device)
+        from PIL import Image as PILImage
+        init_im = PILImage.open(BytesIO(init_bytes)).convert('RGB').resize((width, height))
+        g = pipe(prompt=prompt, image=init_im, strength=max(0.05, min(strength, 0.99)), num_inference_steps=max(1, min(steps, 30)), guidance_scale=max(1.0, min(cfg, 12.0)))
+        im = g.images[0]
+        buf = BytesIO(); im.save(buf, format='PNG'); return buf
+    except Exception:
+        return None
+
+def try_inpaint_with_diffusers(prompt: str, init_bytes: bytes | None, mask_bytes: bytes | None, steps: int, cfg: float, width: int, height: int) -> BytesIO | None:
+    if not _diffusers_available or not init_bytes or not mask_bytes:
+        return None
+    try:
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        pipe = StableDiffusionXLInpaintPipeline.from_pretrained(os.getenv('SDXL_INPAINT_MODEL', 'diffusers/stable-diffusion-xl-1.0-inpainting-0.1'))
+        if device == 'cuda':
+            pipe = pipe.to(device)
+        from PIL import Image as PILImage
+        init_im = PILImage.open(BytesIO(init_bytes)).convert('RGB').resize((width, height))
+        mask_im = PILImage.open(BytesIO(mask_bytes)).convert('L').resize((width, height))
+        g = pipe(prompt=prompt, image=init_im, mask_image=mask_im, num_inference_steps=max(1, min(steps, 30)), guidance_scale=max(1.0, min(cfg, 12.0)))
+        im = g.images[0]
+        buf = BytesIO(); im.save(buf, format='PNG'); return buf
+    except Exception:
+        return None
+
 def fetch_bytes(url: str) -> bytes | None:
     try:
         if not is_allowed_url(url):
@@ -210,7 +243,8 @@ async def img2img(request: Request):
 	preview = bool(body.get('preview', False))
 	mode = int(body.get('mode', 1))
 	w, h = choose_dims(aspect, preview)
-	buf = make_image(w, h, color=(10, 10, 10))
+	init_bytes = fetch_bytes(init_url or '')
+	buf = try_img2img_with_diffusers(prompt, init_bytes, float(body.get('strength', 0.6)), int(body.get('steps', 20)), float(body.get('cfg', 7.0)), w, h) or make_image(w, h, color=(10, 10, 10))
 	key = f"gen/img2img_{random.randint(0, 1_000_000)}.png"
 	url = upload_png(key, buf)
 	meta = image_meta(buf, w, h)
@@ -240,7 +274,10 @@ async def inpaint(request: Request):
 	preview = bool(body.get('preview', False))
 	mode = int(body.get('mode', 1))
 	w, h = choose_dims(aspect, preview)
-	buf = make_image(w, h, color=(20, 20, 20))
+	init_url = body.get('initImageUrl')
+	init_bytes = fetch_bytes(init_url or '')
+	mask_bytes = fetch_bytes(mask_url or '')
+	buf = try_inpaint_with_diffusers(prompt, init_bytes, mask_bytes, int(body.get('steps', 20)), float(body.get('cfg', 7.0)), w, h) or make_image(w, h, color=(20, 20, 20))
 	key = f"gen/inpaint_{random.randint(0, 1_000_000)}.png"
 	url = upload_png(key, buf)
 	meta = image_meta(buf, w, h)
@@ -258,8 +295,7 @@ async def inpaint(request: Request):
 		pkey = f"gen/redacted_{random.randint(0, 1_000_000)}.png"
 		purl = upload_png(pkey, red)
 		previews = [purl]
-	mask_bytes = fetch_bytes(mask_url or '')
-	return {"output_url": url, "preview_urls": previews, "safety_scores": safety, "image_meta": meta, "echo": {"maskUrl": mask_url, "maskBytes": bool(mask_bytes)}}
+	return {"output_url": url, "preview_urls": previews, "safety_scores": safety, "image_meta": meta, "echo": {"maskUrl": mask_url, "initImageUrl": init_url, "usedDiffusers": buf is not None}}
 
 @app.post('/infer/controlnet')
 async def controlnet(request: Request):
