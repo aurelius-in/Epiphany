@@ -116,12 +116,7 @@ export default function GalleryPage() {
 							)}
 							{it.kind === 'video' && it.outputUrl && (
 								<div style={{position:'relative'}}>
-									<video src={it.outputUrl} style={{width:'100%', height:220, objectFit:'cover'}} muted />
-									<div style={{position:'absolute', inset:0, display:'grid', placeItems:'center'}}>
-										<div style={{width:44, height:44, borderRadius:'50%', background:'rgba(0,0,0,0.5)', border:'1px solid #fff3', display:'grid', placeItems:'center'}}>
-											<div style={{marginLeft:3, width:0, height:0, borderTop:'8px solid transparent', borderBottom:'8px solid transparent', borderLeft:'14px solid #fff'}} />
-										</div>
-									</div>
+									<video src={it.outputUrl} style={{width:'100%', height:220, objectFit:'cover'}} controls muted playsInline />
 								</div>
 							)}
 						</a>
@@ -129,6 +124,9 @@ export default function GalleryPage() {
 							<div>{it.kind} • {it.status} {it.createdAt && (<span style={{marginLeft:8, color:'#7c7c86'}}>{new Date(it.createdAt).toLocaleString()}</span>)}</div>
 							<div style={{display:'flex', gap:6, alignItems:'center'}}>
 								{it.safety && <span style={{border:'1px solid #26262a', padding:'2px 6px', borderRadius:8}}>{safetyLabel(it.safety)}</span>}
+								{it.safety && typeof (it.safety as any).nsfw === 'number' && (it.safety as any).nsfw > 0 && (
+									<button onClick={(e)=>{ e.preventDefault(); const container = (e.currentTarget.closest('div')?.parentElement?.previousElementSibling as HTMLElement); const img = container?.querySelector('img') as HTMLImageElement | null; if (img) img.style.filter = img.style.filter ? '' : 'blur(10px)'; }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'2px 6px', borderRadius:8}}>Toggle Blur</button>
+								)}
 								<a href={recreateHref(it)} style={{color:'#cfd0ff'}}>Recreate</a>
 								<a href={`/generations/${it.id}`} style={{color:'#cfd0ff'}}>Details</a>
 								<button onClick={async (e)=>{ e.preventDefault(); try { await fetch(`/api/proxy/v1/jobs/by-generation/${it.id}/cancel`, { method:'POST' }); } catch {} }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'4px 8px', borderRadius:8}}>Cancel</button>
