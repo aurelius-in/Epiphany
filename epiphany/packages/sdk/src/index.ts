@@ -15,6 +15,7 @@ export const jobRes = z.object({
 	outputUrl: z.string().url().optional(),
 	previewUrls: z.array(z.string()).optional(),
 	explainId: z.string().optional(),
+	caption: z.string().optional(),
 	error: z.string().optional(),
 })
 
@@ -78,4 +79,30 @@ export async function listGenerations(baseUrl: string, apiKey: string, page = 1,
 	const r = await fetch(`${baseUrl}/v1/generations?page=${page}&limit=${limit}`, { headers: headers(apiKey) })
 	const j = await r.json()
 	return z.object({ items: z.array(z.any()), nextPage: z.number().optional() }).parse(j)
+}
+
+// Edit helpers
+export async function upscale(baseUrl: string, apiKey: string, imageUrl: string, scale: 2|4) {
+	const r = await fetch(`${baseUrl}/v1/edit/upscale`, { method: 'POST', headers: headers(apiKey), body: JSON.stringify({ imageUrl, scale }) })
+	return z.object({ id: z.string() }).parse(await r.json())
+}
+export async function restoreFace(baseUrl: string, apiKey: string, imageUrl: string) {
+	const r = await fetch(`${baseUrl}/v1/edit/restore-face`, { method: 'POST', headers: headers(apiKey), body: JSON.stringify({ imageUrl }) })
+	return z.object({ id: z.string() }).parse(await r.json())
+}
+export async function removeBg(baseUrl: string, apiKey: string, imageUrl: string) {
+	const r = await fetch(`${baseUrl}/v1/edit/remove-bg`, { method: 'POST', headers: headers(apiKey), body: JSON.stringify({ imageUrl }) })
+	return z.object({ id: z.string() }).parse(await r.json())
+}
+export async function crop(baseUrl: string, apiKey: string, imageUrl: string, x: number, y: number, w: number, h: number) {
+	const r = await fetch(`${baseUrl}/v1/edit/crop`, { method: 'POST', headers: headers(apiKey), body: JSON.stringify({ imageUrl, x, y, w, h }) })
+	return z.object({ id: z.string() }).parse(await r.json())
+}
+export async function resize(baseUrl: string, apiKey: string, imageUrl: string, width: number, height: number) {
+	const r = await fetch(`${baseUrl}/v1/edit/resize`, { method: 'POST', headers: headers(apiKey), body: JSON.stringify({ imageUrl, width, height }) })
+	return z.object({ id: z.string() }).parse(await r.json())
+}
+export async function caption(baseUrl: string, apiKey: string, imageUrl: string) {
+	const r = await fetch(`${baseUrl}/v1/edit/caption`, { method: 'POST', headers: headers(apiKey), body: JSON.stringify({ imageUrl }) })
+	return z.object({ id: z.string() }).parse(await r.json())
 }
