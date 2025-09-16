@@ -340,4 +340,37 @@ r.get('/metrics', async (_req, res) => {
 	res.json({ totals: { generations: genCount, assets: assetCount, events: eventCount, explains: explainCount }, generationsByStatus: { succeeded: genSucceeded, failed: genFailed, queued: genQueued } })
 })
 
+r.get('/jobs/by-generation/:id', async (req, res) => {
+	const generationId = String(req.params.id)
+	for (const [name, q] of Object.entries(queues)) {
+		const jobs = await (q as any).getJobs(['waiting','delayed','active','completed','failed','paused'])
+		const found = jobs.find(j => j?.data?.generationId === generationId)
+		if (found) {
+			const state = await found.getState()
+			return res.json({ queue: name, id: found.id, state, progress: found.progress })
+		}
+	}
+	return res.status(404).json({ error: 'not_found' })
+})
+
+r.post('/jobs/by-generation/:id/cancel', async (req, res) => {
+	const generationId = String(req.params.id)
+	let cancelled = false
+	for (const q of Object.values(queues)) {
+		const jobs = await (q as any).getJobs(['waiting','delayed','active'])
+		for (const j of jobs) {
+			if (j?.data?.generationId === generationId) {
+				try { await j.remove(); cancelled = true } catch {}
+			}
+		}
+	}
+	if (cancelled) {
+		try {
+			await prisma.generation.update({ where: { id: generationId }, data: { status: 'canceled' } })
+			await prisma.event.create({ data: { generationId, type: 'canceled', payload: {} as any } })
+		} catch {}
+	}
+	res.json({ generationId, cancelled })
+})
+
 export const routes = r

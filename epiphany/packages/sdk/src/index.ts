@@ -33,6 +33,16 @@ export async function getJob(baseUrl: string, apiKey: string, id: string, opts?:
 	return jobRes.parse(j)
 }
 
+export async function getJobByGeneration(baseUrl: string, apiKey: string, generationId: string) {
+	const r = await fetch(`${baseUrl}/v1/jobs/by-generation/${generationId}`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function cancelJobByGeneration(baseUrl: string, apiKey: string, generationId: string) {
+	const r = await fetch(`${baseUrl}/v1/jobs/by-generation/${generationId}/cancel`, { method: 'POST', headers: headers(apiKey) })
+	return await r.json()
+}
+
 const aspectEnum = z.enum(["1:1","16:9","9:16","3:2","2:3"]) as unknown as z.ZodEnum<["1:1","16:9","9:16","3:2","2:3"]>
 
 export const genImageReq = z.object({

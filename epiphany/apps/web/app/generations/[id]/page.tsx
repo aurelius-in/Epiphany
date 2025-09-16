@@ -27,7 +27,7 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 	useEffect(() => {
 		const run = async () => {
 			try {
-				const g = await fetch(`/api/proxy/v1/generations/${id}?signed=1`).then(r => r.json())
+				const g = await fetch(`/api/proxy/v1/generations/${id}?signed=1&ttl=900`).then(r => r.json())
 				setGen(g)
 				const ev = await fetch(`/api/proxy/v1/generations/${id}/events?limit=50`).then(r => r.json())
 				setEvents(ev)
@@ -37,6 +37,10 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 		}
 		run()
 	}, [id])
+
+	async function onCancel() {
+		try { await fetch(`/api/proxy/v1/jobs/by-generation/${id}/cancel`, { method: 'POST' }); location.reload() } catch {}
+	}
 
 	async function onDelete() {
 		try {
@@ -52,7 +56,10 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 		<div style={{padding:16, display:'grid', gap:16}}>
 			<div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
 				<h1>Generation {gen.id}</h1>
-				<button onClick={onDelete} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Delete</button>
+				<div style={{display:'flex', gap:8}}>
+					<button onClick={onCancel} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Cancel</button>
+					<button onClick={onDelete} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Delete</button>
+				</div>
 			</div>
 			<div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:16}}>
 				<div style={{border:'1px solid #26262a', borderRadius:8, padding:8, background:'#101012'}}>
