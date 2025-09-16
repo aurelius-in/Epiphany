@@ -5,6 +5,7 @@ import { Job } from 'bullmq'
 import { prisma } from './db'
 import { getEnv } from './env'
 import { getSignedUrl } from './s3'
+import { getSignedPutUrl, publicUrlFor } from './s3'
 
 const env = getEnv()
 const r = Router()
@@ -147,6 +148,15 @@ r.post('/edit/caption', async (req, res) => {
 	const body = z.object({ imageUrl: z.string().url() }).parse(req.body)
 	const job = await queues.edit_image.add('caption', body, { removeOnComplete: true, removeOnFail: true })
 	res.json({ id: job.id })
+})
+
+r.post('/upload-url', async (req, res) => {
+	const body = z.object({ key: z.string().min(1).optional(), contentType: z.string().optional() }).parse(req.body || {})
+	const key = body.key || `inputs/${Date.now()}_${Math.random().toString(36).slice(2)}.bin`
+	const contentType = body.contentType || 'application/octet-stream'
+	const putUrl = getSignedPutUrl(key, contentType, 3600, true)
+	const publicUrl = publicUrlFor(key, true)
+	res.json({ key, putUrl, publicUrl, expiresSec: 3600 })
 })
 
 r.get('/jobs/:id', async (req, res) => {
