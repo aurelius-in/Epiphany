@@ -3,6 +3,7 @@ import express from 'express'
 import cors from 'cors'
 import morgan from 'morgan'
 import compression from 'compression'
+import helmet from 'helmet'
 import { getEnv } from './env'
 import { requestId, apiKeyAuth, tinyRateLimit, urlAllowlist } from './middleware'
 import { routes } from './routes'
@@ -13,6 +14,7 @@ const env = getEnv()
 const app = express()
 
 app.disable('x-powered-by')
+app.use(helmet())
 app.use((_, res, next) => {
 	res.setHeader('X-Content-Type-Options', 'nosniff')
 	res.setHeader('X-Frame-Options', 'SAMEORIGIN')
@@ -98,6 +100,9 @@ app.get('/v1/system', async (_req, res) => {
 	}
 	res.json({ health, version, config })
 })
+
+const startedAt = Date.now()
+app.get('/v1/uptime', (_req, res) => res.json({ startedAt, uptimeMs: Date.now() - startedAt }))
 
 app.use('/v1', urlAllowlist())
 app.use('/v1', routes)

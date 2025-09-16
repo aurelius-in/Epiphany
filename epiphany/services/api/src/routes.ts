@@ -329,6 +329,13 @@ r.get('/assets/:id', async (req, res) => {
 	res.json(a)
 })
 
+r.head('/assets/:id', async (req, res) => {
+	const id = String(req.params.id)
+	const a = await prisma.asset.findUnique({ where: { id } }).catch(() => null)
+	if (!a) return res.status(404).end()
+	res.status(200).end()
+})
+
 r.delete('/assets', async (req, res) => {
 	const body = z.object({ id: z.string().optional(), url: z.string().url().optional() }).parse(req.body || {})
 	let where: any = {}
