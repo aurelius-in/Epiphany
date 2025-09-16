@@ -5,6 +5,8 @@ import boto3
 import hashlib
 import random
 from typing import Optional
+import numpy as np
+import imageio
 import requests
 
 app = FastAPI(title="Epiphany Infer Video")
@@ -75,10 +77,18 @@ def try_t2v_with_svd(prompt: str) -> Optional[BytesIO]:
 	if pipe is None:
 		return None
 	try:
-		# Placeholder: real generation omitted; return stub container
-		raw = BytesIO()
-		raw.write(b"SVD video placeholder")
-		return raw
+		# Generate simple frame sequence placeholder (solid color gradient)
+		frames = []
+		for i in range(24):
+			val = int(255 * (i / 23))
+			frame = np.zeros((256, 256, 3), dtype=np.uint8)
+			frame[:, :, 0] = val
+			frame[:, :, 1] = (255 - val)
+			frame[:, :, 2] = 128
+			frames.append(frame)
+		buf = BytesIO()
+		imageio.mimsave(buf, frames, format='FFMPEG', fps=12)
+		return buf
 	except Exception:
 		return None
 
