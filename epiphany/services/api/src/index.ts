@@ -77,6 +77,8 @@ app.get('/v1/health', async (_req, res) => {
 	const summary = await healthSummary(env)
 	res.json(summary)
 })
+app.get('/v1/healthz', (_req, res) => res.status(200).json({ ok: true }))
+app.head('/v1/healthz', (_req, res) => res.status(200).end())
 
 app.get('/v1/version', (_req, res) => {
 	res.json({ name: 'epiphany', version: process.env.npm_package_version || '0.1.0' })
