@@ -79,7 +79,14 @@ export default function GalleryPage() {
 								<img src={it.outputUrl} alt={it.id} style={{width:'100%', height:220, objectFit:'cover'}} />
 							)}
 							{it.kind === 'video' && it.outputUrl && (
-								<video src={it.outputUrl} style={{width:'100%', height:220, objectFit:'cover'}} controls />
+								<div style={{position:'relative'}}>
+									<video src={it.outputUrl} style={{width:'100%', height:220, objectFit:'cover'}} muted />
+									<div style={{position:'absolute', inset:0, display:'grid', placeItems:'center'}}>
+										<div style={{width:44, height:44, borderRadius:'50%', background:'rgba(0,0,0,0.5)', border:'1px solid #fff3', display:'grid', placeItems:'center'}}>
+											<div style={{marginLeft:3, width:0, height:0, borderTop:'8px solid transparent', borderBottom:'8px solid transparent', borderLeft:'14px solid #fff'}} />
+										</div>
+									</div>
+								</div>
 							)}
 						</a>
 						<div style={{padding:8, fontSize:12, color:'#a4a4ad', display:'flex', justifyContent:'space-between', alignItems:'center', gap:8}}>

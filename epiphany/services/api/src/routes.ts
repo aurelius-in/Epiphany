@@ -5,6 +5,7 @@ import { Job } from 'bullmq'
 import { prisma } from './db'
 import { getEnv } from './env'
 import { getSignedUrl } from './s3'
+import { getSignedPutUrl, publicUrlFor } from './s3'
 
 const env = getEnv()
 const r = Router()
@@ -149,6 +150,15 @@ r.post('/edit/caption', async (req, res) => {
 	res.json({ id: job.id })
 })
 
+r.post('/upload-url', async (req, res) => {
+	const body = z.object({ key: z.string().min(1).optional(), contentType: z.string().optional() }).parse(req.body || {})
+	const key = body.key || `inputs/${Date.now()}_${Math.random().toString(36).slice(2)}.bin`
+	const contentType = body.contentType || 'application/octet-stream'
+	const putUrl = getSignedPutUrl(key, contentType, 3600, true)
+	const publicUrl = publicUrlFor(key, true)
+	res.json({ key, putUrl, publicUrl, expiresSec: 3600 })
+})
+
 r.get('/jobs/:id', async (req, res) => {
 	const id = req.params.id
 	const signed = String(req.query.signed || '0') === '1'
@@ -257,6 +267,16 @@ r.get('/events', async (req, res) => {
 	const items = await prisma.event.findMany({ where: where as any, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
 	const nextPage = items.length === limit ? page + 1 : undefined
 	res.json({ items, nextPage })
+})
+
+r.get('/assets', async (req, res) => {
+	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
+	const limit = Math.max(1, Math.min(200, parseInt(String(req.query.limit || '100')) || 100))
+	const signed = String(req.query.signed || '0') === '1'
+	const items = await prisma.asset.findMany({ orderBy: { id: 'desc' as any }, skip: (page - 1) * limit, take: limit })
+	const nextPage = items.length === limit ? page + 1 : undefined
+	const mapped = items.map((a: any) => ({ ...a, url: signed ? maybeSign(a.url, true) : a.url }))
+	res.json({ items: mapped, nextPage })
 })
 
 export const routes = r

@@ -43,6 +43,7 @@
         <li><a href="/health" style="color:inherit;text-decoration:none">Health</a></li>
         <li><a href="/gallery" style="color:inherit;text-decoration:none">Gallery</a></li>
         <li><a href="/events" style="color:inherit;text-decoration:none">Events</a></li>
+        <li><a href="/assets" style="color:inherit;text-decoration:none">Assets</a></li>
       </ul>
     </nav>
   </header>
@@ -129,6 +130,13 @@
         <div>
           <label class="field-label" for="seedInput">Seed</label>
           <input id="seedInput" type="number" class="input" placeholder="random">
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div>
+          <label class="field-label" for="initFile">Init Image (optional)</label>
+          <input id="initFile" type="file" accept="image/*" class="input" />
         </div>
       </div>
 
@@ -283,6 +291,7 @@
       const cfgEl = document.getElementById('cfgInput');
       const seedEl = document.getElementById('seedInput');
       const genBtn = document.getElementById('btnGenerate');
+      const initFile = document.getElementById('initFile');
       const resultImg = document.getElementById('resultImg');
       const resultBody = document.getElementById('resultBody');
       const resultMeta = document.getElementById('resultMeta');
@@ -296,6 +305,14 @@
         const res = await fetch(url, { method: 'POST', headers: headers(), body: JSON.stringify(body) });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
+      }
+      async function uploadInitIfAny() {
+        const f = (initFile && initFile.files && initFile.files[0]) ? initFile.files[0] : null;
+        if (!f) return null;
+        const up = await postJson(`${API_BASE}/v1/upload-url`, { key: undefined, contentType: f.type || 'application/octet-stream' });
+        const putRes = await fetch(up.putUrl, { method: 'PUT', headers: { 'Content-Type': f.type || 'application/octet-stream' }, body: f });
+        if (!putRes.ok) throw new Error('upload failed ' + putRes.status);
+        return up.publicUrl;
       }
       async function getJson(url) {
         const res = await fetch(url, { headers: headers() });
@@ -392,6 +409,7 @@
         try {
           ensureEditButtons();
           resultBody.innerHTML = '<div class="result-placeholder">Generating…</div>';
+          const initUrl = await uploadInitIfAny().catch(()=>null);
           const body = {
             prompt: String(promptEl.value || '').slice(0,2000),
             mode: Number(modeRange.value || 0),
@@ -402,6 +420,7 @@
             seed: seedEl.value ? Number(seedEl.value) : null,
             modelId: mapModel(modelEl.value),
             preview: false,
+            initImageUrl: initUrl || undefined,
           };
           const j = await postJson(`${API_BASE}/v1/generate/image`, body);
           window.lastJobId = j.id;

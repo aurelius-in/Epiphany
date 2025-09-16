@@ -21,3 +21,14 @@ export async function putObject(key: string, body: Buffer, contentType?: string)
 export function getSignedUrl(key: string, expiresSeconds = 3600): string {
 	return (s3 as any).getSignedUrl('getObject', { Bucket: env.S3_BUCKET!, Key: key, Expires: expiresSeconds })
 }
+
+export function getSignedPutUrl(key: string, contentType?: string, expiresSeconds = 3600, useInputsBucket = false): string {
+	const Bucket = (useInputsBucket ? (env.S3_INPUTS_BUCKET || env.S3_BUCKET) : env.S3_BUCKET)!
+	return (s3 as any).getSignedUrl('putObject', { Bucket, Key: key, Expires: expiresSeconds, ContentType: contentType })
+}
+
+export function publicUrlFor(key: string, useInputsBucket = false): string {
+	const endpoint = env.S3_ENDPOINT?.replace('http://', '').replace('https://','')
+	const bucket = useInputsBucket ? (env.S3_INPUTS_BUCKET || env.S3_BUCKET) : env.S3_BUCKET
+	return `http://${endpoint}/${bucket}/${key}`
+}

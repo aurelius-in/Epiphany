@@ -153,3 +153,23 @@ export async function streamJob(baseUrl: string, apiKey: string, id: string, onE
 	es.onerror = () => { es.close() }
 	return es
 }
+
+export async function requestUploadUrl(baseUrl: string, apiKey: string, key?: string, contentType?: string) {
+	const r = await fetch(`${baseUrl}/v1/upload-url`, { method: 'POST', headers: headers(apiKey), body: JSON.stringify({ key, contentType }) })
+	const j = await r.json()
+	return z.object({ key: z.string(), putUrl: z.string(), publicUrl: z.string(), expiresSec: z.number() }).parse(j)
+}
+
+export async function putBytesSigned(putUrl: string, bytes: Uint8Array, contentType = 'application/octet-stream') {
+	const r = await fetch(putUrl, { method: 'PUT', headers: { 'Content-Type': contentType }, body: bytes })
+	if (!r.ok) throw new Error(`upload_failed_${r.status}`)
+	return true
+}
+
+export async function listAssets(baseUrl: string, apiKey: string, page = 1, limit = 100, opts?: { signed?: boolean }) {
+	const q = new URLSearchParams({ page: String(page), limit: String(limit) })
+	if (opts?.signed) q.set('signed','1')
+	const r = await fetch(`${baseUrl}/v1/assets?${q.toString()}`, { headers: headers(apiKey) })
+	const j = await r.json()
+	return z.object({ items: z.array(z.any()), nextPage: z.number().optional() }).parse(j)
+}
