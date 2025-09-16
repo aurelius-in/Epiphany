@@ -2,7 +2,7 @@
 
 Epiphany AI Art Studio — Full-Stack Diffusion + Video
 
-A production‑ready, demo‑friendly AI art studio for images and video.
+A production‑ready AI art studio for images and video.
 
 - Frontend: Next.js 14 + Tailwind (or static UI served via public/index.html)
 - API Gateway: Node 20 + Express + Zod + Prisma + BullMQ + S3/MinIO

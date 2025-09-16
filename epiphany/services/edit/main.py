@@ -65,7 +65,7 @@ def fetch_image(url: str) -> Tuple[Image.Image, int, int]:
 			return im, im.width, im.height
 		except Exception:
 			pass
-	# Placeholder: in demo, return a gray image
+	# Placeholder: return a gray image
 	im = Image.new('RGBA', (512, 512), (64,64,64,255))
 	return im, im.width, im.height
 

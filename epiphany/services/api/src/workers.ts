@@ -57,7 +57,8 @@ async function processGenerateVideo(job: Job) {
 	try {
 		await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'running' } })
 		await job.updateProgress(10)
-		const resp = await postJson<any>('http://localhost:8002/infer/t2v', job.data)
+		const endpoint = job.data?.sourceImageUrl ? 'http://localhost:8002/infer/animate' : 'http://localhost:8002/infer/t2v'
+		const resp = await postJson<any>(endpoint, job.data)
 		await job.updateProgress(90)
 		const durationMs = resp.duration_ms || (Date.now() - t0)
 		await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'succeeded', outputUrl: resp.output_url || null, durationMs, modelHash: resp.model_hash || null } })

@@ -3,7 +3,7 @@ export default function AboutPage() {
 		<div style={{padding:16}}>
 			<h1>About Epiphany</h1>
 			<p style={{marginTop:8, color:'#a4a4ad'}}>
-				Epiphany is a full‑stack AI art studio demo with image/video generation, editing, explainability, and storage built in.
+				Epiphany is a full‑stack AI art studio with image/video generation, editing, explainability, and storage built in.
 			</p>
 			<ul style={{marginTop:12}}>
 				<li>Frontend: Next.js + Tailwind (static UI served from public)</li>
