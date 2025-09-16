@@ -28,6 +28,15 @@ try:
 except Exception:
     _diffusers_available = False
 
+# Optional safety checker (best-effort)
+_safety_available = False
+try:
+    from transformers import AutoFeatureExtractor  # type: ignore
+    from diffusers.pipelines.stable_diffusion.safety_checker import StableDiffusionSafetyChecker  # type: ignore
+    _safety_available = True
+except Exception:
+    _safety_available = False
+
 ALLOWED_URL_PREFIXES = [p.strip() for p in (os.getenv('ALLOWED_URL_PREFIXES') or '').split(',') if p.strip()]
 
 def is_allowed_url(url: str) -> bool:
@@ -70,6 +79,24 @@ def simple_safety_from_prompt(prompt: str):
 	nsfw_keywords = ['nsfw', 'nude', 'nudity', 'explicit', 'adult']
 	score = 1.0 if any(k in p for k in nsfw_keywords) else 0.0
 	return {"nsfw": score}
+
+def safety_score_image(img: Image.Image) -> float:
+    if not _safety_available:
+        return 0.0
+    try:
+        from numpy import array as np_array  # type: ignore
+        extractor = AutoFeatureExtractor.from_pretrained("CompVis/stable-diffusion-safety-checker")
+        checker = StableDiffusionSafetyChecker.from_pretrained("CompVis/stable-diffusion-safety-checker")
+        arr = np_array(img.convert('RGB'))[None, :]
+        inputs = extractor(arr, return_tensors="pt")
+        _, has_nsfw_concepts = checker(images=arr, clip_input=inputs.pixel_values)
+        if isinstance(has_nsfw_concepts, list) and len(has_nsfw_concepts) > 0:
+            return 1.0 if any(bool(x) for x in has_nsfw_concepts) else 0.0
+        if isinstance(has_nsfw_concepts, (int, float)):
+            return float(has_nsfw_concepts)
+        return 0.0
+    except Exception:
+        return 0.0
 
 def choose_dims(aspect: str | None, preview: bool | None):
 	if aspect not in ["1:1", "16:9", "9:16", "3:2", "2:3"]:
@@ -159,6 +186,13 @@ async def txt2img(request: Request):
 	url = upload_png(key, buf)
 	meta = image_meta(buf, w, h)
 	safety = simple_safety_from_prompt(prompt)
+	try:
+		buf.seek(0)
+		img_chk = Image.open(buf).convert('RGB')
+		score_img = safety_score_image(img_chk)
+		safety["nsfw"] = max(float(safety.get("nsfw", 0.0)), float(score_img))
+	except Exception:
+		pass
 	previews = []
 	if mode != 2 and safety.get('nsfw', 0) > 0:
 		red = make_image(64, 64, color=(64, 64, 64))
@@ -181,6 +215,13 @@ async def img2img(request: Request):
 	url = upload_png(key, buf)
 	meta = image_meta(buf, w, h)
 	safety = simple_safety_from_prompt(prompt)
+	try:
+		buf.seek(0)
+		img_chk = Image.open(buf).convert('RGB')
+		score_img = safety_score_image(img_chk)
+		safety["nsfw"] = max(float(safety.get("nsfw", 0.0)), float(score_img))
+	except Exception:
+		pass
 	previews = []
 	if mode != 2 and safety.get('nsfw', 0) > 0:
 		red = make_image(64, 64, color=(64, 64, 64))
@@ -204,6 +245,13 @@ async def inpaint(request: Request):
 	url = upload_png(key, buf)
 	meta = image_meta(buf, w, h)
 	safety = simple_safety_from_prompt(prompt)
+	try:
+		buf.seek(0)
+		img_chk = Image.open(buf).convert('RGB')
+		score_img = safety_score_image(img_chk)
+		safety["nsfw"] = max(float(safety.get("nsfw", 0.0)), float(score_img))
+	except Exception:
+		pass
 	previews = []
 	if mode != 2 and safety.get('nsfw', 0) > 0:
 		red = make_image(64, 64, color=(64, 64, 64))
@@ -228,6 +276,13 @@ async def controlnet(request: Request):
 	url = upload_png(key, buf)
 	meta = image_meta(buf, w, h)
 	safety = simple_safety_from_prompt(prompt)
+	try:
+		buf.seek(0)
+		img_chk = Image.open(buf).convert('RGB')
+		score_img = safety_score_image(img_chk)
+		safety["nsfw"] = max(float(safety.get("nsfw", 0.0)), float(score_img))
+	except Exception:
+		pass
 	previews = []
 	if mode != 2 and safety.get('nsfw', 0) > 0:
 		red = make_image(64, 64, color=(64, 64, 64))
