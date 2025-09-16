@@ -18,7 +18,7 @@ $deadline = (Get-Date).AddMinutes(2)
 Do {
 	Start-Sleep -Seconds 2
 	try {
-		$st = Invoke-RestMethod -Headers @{"X-API-Key"=$ApiKey} -Uri "$ApiBase/v1/jobs/$jobId" -Method GET
+		$st = Invoke-RestMethod -Headers @{"X-API-Key"=$ApiKey} -Uri "$ApiBase/v1/jobs/$jobId?signed=1" -Method GET
 		Write-Host "Status:" $st.status "Progress:" ($st.progress)
 		if ($st.status -eq 'completed' -or $st.status -eq 'succeeded' -or $st.outputUrl) { break }
 	} catch {
@@ -28,3 +28,34 @@ Do {
 
 if ($st.outputUrl) { Write-Host "Output:" $st.outputUrl }
 Write-Host "Done."
+
+Write-Host "Video job..."
+$bodyV = @{ prompt = "a test video"; mode = 0 } | ConvertTo-Json
+$jobV = Invoke-RestMethod -Headers @{"X-API-Key"=$ApiKey; "Content-Type"="application/json"} -Uri "$ApiBase/v1/generate/video" -Method POST -Body $bodyV
+$jobVId = $jobV.id
+$deadline = (Get-Date).AddMinutes(2)
+Do {
+	Start-Sleep -Seconds 2
+	try {
+		$stV = Invoke-RestMethod -Headers @{"X-API-Key"=$ApiKey} -Uri "$ApiBase/v1/jobs/$jobVId?signed=1" -Method GET
+		Write-Host "VStatus:" $stV.status "Progress:" ($stV.progress)
+		if ($stV.outputUrl) { break }
+	} catch {
+		Write-Host "poll error" $_
+	}
+} While ((Get-Date) -lt $deadline)
+
+Write-Host "Edit job (upscale)..."
+$ed = Invoke-RestMethod -Headers @{"X-API-Key"=$ApiKey; "Content-Type"="application/json"} -Uri "$ApiBase/v1/edit/upscale" -Method POST -Body '{"imageUrl":"http://example.com/foo.png","scale":2}'
+$edId = $ed.id
+$deadline = (Get-Date).AddMinutes(1)
+Do {
+	Start-Sleep -Seconds 2
+	try {
+		$stE = Invoke-RestMethod -Headers @{"X-API-Key"=$ApiKey} -Uri "$ApiBase/v1/jobs/$edId?signed=1" -Method GET
+		Write-Host "EStatus:" $stE.status "Progress:" ($stE.progress)
+		if ($stE.outputUrl) { break }
+	} catch {
+		Write-Host "poll error" $_
+	}
+} While ((Get-Date) -lt $deadline)
