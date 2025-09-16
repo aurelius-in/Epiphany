@@ -322,6 +322,15 @@ r.get('/assets', async (req, res) => {
 	res.json({ items: mapped, nextPage })
 })
 
+r.get('/assets/export/csv', async (_req, res) => {
+	const items = await prisma.asset.findMany({ orderBy: { id: 'desc' as any }, take: 1000 })
+	const rows = [['id','url','kind','mime','bytes','width','height','sha256']]
+	for (const a of items) rows.push([a.id,a.url,a.kind,a.mime,String(a.bytes||''),String(a.width||''),String(a.height||''),String(a.sha256||'')])
+	const csv = rows.map(r => r.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n')
+	res.setHeader('Content-Type', 'text/csv')
+	res.setHeader('Content-Disposition', 'attachment; filename="assets.csv"')
+	res.send(csv)
+})
 r.get('/assets/:id', async (req, res) => {
 	const id = String(req.params.id)
 	const a = await prisma.asset.findUnique({ where: { id } }).catch(() => null)

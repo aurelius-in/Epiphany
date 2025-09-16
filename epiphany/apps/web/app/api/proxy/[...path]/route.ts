@@ -19,6 +19,11 @@ async function forward(req: NextRequest, path: string) {
 	const ct = res.headers.get('content-type') || ''
 	if (ct) passHeaders['Content-Type'] = ct
 	passHeaders['Cache-Control'] = res.headers.get('cache-control') || 'no-cache'
+	const xrid = res.headers.get('x-request-id'); if (xrid) passHeaders['X-Request-Id'] = xrid
+	const xl = res.headers.get('x-ratelimit-limit'); if (xl) passHeaders['X-RateLimit-Limit'] = xl
+	const xr = res.headers.get('x-ratelimit-remaining'); if (xr) passHeaders['X-RateLimit-Remaining'] = xr
+	const xw = res.headers.get('x-ratelimit-window'); if (xw) passHeaders['X-RateLimit-Window'] = xw
+	const xrs = res.headers.get('x-ratelimit-reset'); if (xrs) passHeaders['X-RateLimit-Reset'] = xrs
 	return new NextResponse(res.body as any, { status: res.status, headers: passHeaders })
 }
 

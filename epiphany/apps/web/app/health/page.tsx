@@ -52,6 +52,8 @@ export default function HealthPage() {
 					)}
 					<div style={{marginTop: 12}}>
 						<a href="/api/proxy/v1/events" target="_blank" style={{color:'#cfd0ff'}}>Open Events JSON</a>
+						<span style={{marginLeft:12}}>|</span>
+						<a href="/api/proxy/v1/assets/export/csv" target="_blank" style={{marginLeft:12, color:'#cfd0ff'}}>Export Assets CSV</a>
 					</div>
 				</div>
 			)}
