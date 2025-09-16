@@ -72,14 +72,14 @@ def load_svd():
 	except Exception:
 		return None
 
-def try_t2v_with_svd(prompt: str, fps: int = 12, resolution: str = '576p') -> Optional[BytesIO]:
+def try_t2v_with_svd(prompt: str, fps: int = 12, resolution: str = '576p', duration_sec: int = 4) -> Optional[BytesIO]:
 	pipe = load_svd()
 	if pipe is None:
 		return None
 	try:
-		# Generate simple frame sequence placeholder (solid color gradient) honoring fps/resolution
+		# Generate simple frame sequence placeholder honoring fps/resolution/duration
 		w, h = (1024, 576) if resolution == '576p' else (1280, 720)
-		num_frames = fps * 2  # ~2s clip
+		num_frames = max(1, int(fps) * max(1, int(duration_sec)))
 		frames = []
 		for i in range(max(1, num_frames)):
 			val = int(255 * (i / max(1, num_frames - 1)))
@@ -104,7 +104,8 @@ async def t2v(request: Request):
 	prompt = body.get('prompt', '')
 	fps = int(body.get('fps') or 12)
 	resolution = str(body.get('resolution') or '576p')
-	raw = try_t2v_with_svd(prompt, fps=fps, resolution=resolution) or BytesIO()
+	duration_sec = int(body.get('durationSec') or 4)
+	raw = try_t2v_with_svd(prompt, fps=fps, resolution=resolution, duration_sec=duration_sec) or BytesIO()
 	if raw.getbuffer().nbytes == 0:
 		raw.write(b"Epiphany video stub")
 	key = f"gen/t2v_{random.randint(0, 1_000_000)}.mp4"
@@ -123,29 +124,34 @@ async def animate(request: Request):
 			r = rq.get(src, timeout=10); r.raise_for_status(); ctrl_bytes = r.content
 	except Exception:
 		ctrl_bytes = None
-	# Build simple pan/zoom frames from source image
+	# Build simple pan/zoom frames from source image honoring fps & duration
 	frames = []
 	try:
 		from PIL import Image as PILImage
 		import numpy as np
+		fps = int((body.get('fps') or 12))
+		duration_sec = int((body.get('durationSec') or 4))
+		total = max(1, fps * duration_sec)
 		if ctrl_bytes:
 			im = PILImage.open(BytesIO(ctrl_bytes)).convert('RGB').resize((256,256))
-			for i in range(24):
-				scale = 1.0 + 0.15 * (i/23)
+			for i in range(total):
+				denom = max(1, total-1)
+				scale = 1.0 + 0.15 * (i/denom)
 				w = int(256*scale); h = int(256*scale)
 				im2 = im.resize((w,h))
 				x0 = (w-256)//2; y0 = (h-256)//2
 				crop = im2.crop((x0,y0,x0+256,y0+256))
 				frames.append(np.array(crop))
 		else:
-			for i in range(24):
-				val = int(255 * (i / 23))
+			for i in range(total):
+				denom = max(1, total-1)
+				val = int(255 * (i / denom))
 				frame = np.zeros((256, 256, 3), dtype=np.uint8)
 				frame[:, :, 0] = val
 				frame[:, :, 1] = (255 - val)
 				frame[:, :, 2] = 128
 				frames.append(frame)
-		buf = BytesIO(); imageio.mimsave(buf, frames, format='FFMPEG', fps=12)
+		buf = BytesIO(); imageio.mimsave(buf, frames, format='FFMPEG', fps=fps)
 	except Exception:
 		buf = BytesIO(); buf.write(b"animate stub")
 	key = f"gen/animate_{random.randint(0, 1_000_000)}.mp4"
