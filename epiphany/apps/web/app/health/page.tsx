@@ -7,12 +7,11 @@ type Health = { ok: boolean, services: Record<string, boolean> }
 export default function HealthPage() {
 	const [data, setData] = useState<Health | null>(null)
 	const [error, setError] = useState<string | null>(null)
-	const base = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000'
 
 	useEffect(() => {
 		const run = async () => {
 			try {
-				const res = await fetch(`${base}/v1/health`, { headers: { 'X-API-Key': 'dev' } })
+				const res = await fetch(`/api/proxy/v1/health`)
 				if (!res.ok) throw new Error(`HTTP ${res.status}`)
 				setData(await res.json())
 			} catch (e: any) {
