@@ -130,6 +130,12 @@ r.post('/edit/resize', async (req, res) => {
 	res.json({ id: job.id })
 })
 
+r.post('/edit/caption', async (req, res) => {
+	const body = z.object({ imageUrl: z.string().url() }).parse(req.body)
+	const job = await queues.edit_image.add('caption', body, { removeOnComplete: true, removeOnFail: true })
+	res.json({ id: job.id })
+})
+
 r.get('/jobs/:id', async (req, res) => {
 	const id = req.params.id
 	async function statusOf(qname: keyof typeof queues): Promise<Job | null> {
