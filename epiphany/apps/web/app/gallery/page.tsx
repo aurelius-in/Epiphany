@@ -99,6 +99,7 @@ export default function GalleryPage() {
 							<div style={{display:'flex', gap:6, alignItems:'center'}}>
 								{it.safety && <span style={{border:'1px solid #26262a', padding:'2px 6px', borderRadius:8}}>{safetyLabel(it.safety)}</span>}
 								<a href={recreateHref(it)} style={{color:'#cfd0ff'}}>Recreate</a>
+								<a href={`/generations/${it.id}`} style={{color:'#cfd0ff'}}>Details</a>
 							</div>
 						</div>
 					</div>

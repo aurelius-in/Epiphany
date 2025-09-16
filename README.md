@@ -71,6 +71,7 @@ Headers: `X-API-Key: <string>`, `Content-Type: application/json`
 - GET  `/v1/jobs/:id` → `{ status, progress, outputUrl, previewUrls[], explainId, caption }`
 - GET  `/v1/jobs/:id/stream` → Server-Sent Events for live progress
 - GET  `/v1/generations` → recent history (paginated)
+- GET  `/v1/generations/:id/events` → events for a generation
 - GET  `/v1/explain/:id` → token scores + heatmap URLs
 - GET  `/v1/events` → recent events (filter by `generationId`)
 - GET  `/v1/assets` → recent assets (paginated, `?signed=1`)

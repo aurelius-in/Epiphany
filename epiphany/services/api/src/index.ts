@@ -51,9 +51,15 @@ app.post('/v1/enhance', (req, res) => {
 app.use('/v1', urlAllowlist())
 app.use('/v1', routes)
 
+app.use((req, res, next) => { res.setHeader('X-Request-Id', (req as any).id || ''); next() })
+
 app.use((err: any, req: any, res: any, _next: any) => {
 	const code = typeof err?.status === 'number' ? err.status : 500
 	res.status(code).json({ error: err?.message || 'internal_error', code, requestId: req?.id })
+})
+
+app.use((_req, res) => {
+	res.status(404).json({ error: 'not_found' })
 })
 
 startWorkers()
