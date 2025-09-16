@@ -22,6 +22,11 @@
     /* Header logo & spacing */
     .brand-logo{height:36px;width:auto;object-fit:contain}
     .brand{min-width:220px}
+
+    /* Toasts */
+    #toasts{position:fixed;bottom:16px;right:16px;display:flex;flex-direction:column;gap:8px;z-index:99999}
+    .toast{background:#151517;border:1px solid #3a3a40;color:#e6e6ea;padding:10px 12px;border-radius:10px;box-shadow:0 6px 22px rgba(0,0,0,0.4);min-width:220px;max-width:360px;}
+    .toast.error{border-color:#5c1f1f;background:#1a0f10;color:#ffd7d7}
   </style>
 </head>
 <body class="theme-dark">
@@ -52,6 +57,8 @@
       </ul>
     </nav>
   </header>
+
+  <div id="toasts" aria-live="polite" aria-atomic="true"></div>
 
   <main class="workspace">
     <!-- Left toolbar (aesthetic) -->
@@ -210,6 +217,19 @@
       requestAnimationFrame(() => splash.classList.add('fade'));
       setTimeout(() => { splash.classList.add('done'); setTimeout(() => splash.remove(), 350); }, 6000);
     })();
+  </script>
+
+  <script>
+    function showToast(msg, opts){
+      try{
+        const wrap = document.getElementById('toasts'); if (!wrap) return;
+        const div = document.createElement('div');
+        div.className = 'toast' + (opts && opts.type === 'error' ? ' error' : '');
+        div.textContent = String(msg || '');
+        wrap.appendChild(div);
+        setTimeout(()=>{ try{ div.remove() }catch(_){} }, (opts && opts.durationMs) || 3500);
+      }catch(_){ }
+    }
   </script>
 
   <script>
@@ -400,7 +420,7 @@
       }
       async function postJson(url, body) {
         const res = await fetch(url, { method: 'POST', headers: headers(), body: JSON.stringify(body) });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (!res.ok) { try{ showToast('Request failed: ' + res.status, { type:'error' }) }catch(_){}; throw new Error('HTTP ' + res.status); }
         return res.json();
       }
       async function uploadInitIfAny() {
@@ -436,7 +456,7 @@
       }
       async function getJson(url) {
         const res = await fetch(url, { headers: headers() });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (!res.ok) { try{ showToast('Request failed: ' + res.status, { type:'error' }) }catch(_){}; throw new Error('HTTP ' + res.status); }
         return res.json();
       }
       const sleep = (ms) => new Promise(r => setTimeout(r, ms));

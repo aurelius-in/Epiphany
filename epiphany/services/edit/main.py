@@ -69,6 +69,28 @@ def fetch_image(url: str) -> Tuple[Image.Image, int, int]:
 	im = Image.new('RGBA', (512, 512), (64,64,64,255))
 	return im, im.width, im.height
 
+# Optional integrations
+_rembg_available = False
+try:
+	from rembg import remove as rembg_remove  # type: ignore
+	_rembg_available = True
+except Exception:
+	_rembg_available = False
+
+_realesrgan_available = False
+_gfpgan_available = False
+try:  # lazy optional wrappers; will be instantiated on demand
+	from realesrgan import RealESRGAN  # type: ignore
+	import torch  # type: ignore
+	_realesrgan_available = True
+except Exception:
+	_realesrgan_available = False
+try:
+	from gfpgan import GFPGANer  # type: ignore
+	_gfpgan_available = True
+except Exception:
+	_gfpgan_available = False
+
 @app.get('/health')
 async def health():
 	return {"ok": True}
@@ -81,6 +103,19 @@ async def upscale(request: Request):
 	im, w, h = fetch_image(image_url or '')
 	new_w, new_h = max(1, w*scale), max(1, h*scale)
 	res = im.resize((new_w, new_h), resample=Image.Resampling.LANCZOS)
+	# Try RealESRGAN if available and scale is 4
+	if _realesrgan_available and scale in (2,4):
+		try:
+			device = 'cuda' if 'CUDA_VISIBLE_DEVICES' in os.environ else 'cpu'
+			model = RealESRGAN(torch.device(device), scale)
+			# model weights load is environment-dependent; guard with try/except
+			try:
+				model.load_weights('weights/RealESRGAN_x4plus.pth', download=True)
+			except Exception:
+				pass
+			res = model.enhance(im.convert('RGB'))[0].convert('RGBA')
+		except Exception:
+			pass
 	buf = BytesIO(); res.convert('RGBA').save(buf, format='PNG')
 	key = f"edit/upscale_{random.randint(0,1_000_000)}.png"
 	url = upload_png(key, buf)
@@ -91,8 +126,15 @@ async def restore_face(request: Request):
 	body = await request.json()
 	image_url = body.get('imageUrl')
 	im, w, h = fetch_image(image_url or '')
-	# Placeholder "face restore": slight sharpen and contrast enhance
 	res = ImageEnhance.Contrast(ImageEnhance.Sharpness(im).enhance(1.5)).enhance(1.1)
+	# Try GFPGAN if available
+	if _gfpgan_available:
+		try:
+			restorer = GFPGANer(model_path=None, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None)
+			_, _, restored = restorer.enhance(im.convert('RGB'), has_aligned=False, only_center_face=False, paste_back=True)
+			res = restored.convert('RGBA') if hasattr(restored, 'convert') else res
+		except Exception:
+			pass
 	buf = BytesIO(); res.convert('RGBA').save(buf, format='PNG')
 	key = f"edit/restore_{random.randint(0,1_000_000)}.png"
 	url = upload_png(key, buf)
@@ -103,11 +145,24 @@ async def remove_bg(request: Request):
 	body = await request.json()
 	image_url = body.get('imageUrl')
 	im, w, h = fetch_image(image_url or '')
-	px = im.load()
-	for y in range(im.height):
-		for x in range(im.width):
-			r,g,b,a = px[x,y]
-			if r < 20 and g < 20 and b < 20: px[x,y] = (r,g,b,0)
+	if _rembg_available:
+		try:
+			rgba = im.convert('RGBA')
+			removed = rembg_remove(rgba)
+			im = removed if isinstance(removed, Image.Image) else rgba
+		except Exception:
+			# fallback heuristic for dark bg
+			px = im.load()
+			for y in range(im.height):
+				for x in range(im.width):
+					r,g,b,a = px[x,y]
+					if r < 20 and g < 20 and b < 20: px[x,y] = (r,g,b,0)
+	else:
+		px = im.load()
+		for y in range(im.height):
+			for x in range(im.width):
+				r,g,b,a = px[x,y]
+				if r < 20 and g < 20 and b < 20: px[x,y] = (r,g,b,0)
 	buf_out = BytesIO(); im.save(buf_out, format='PNG')
 	key = f"edit/nobg_{random.randint(0,1_000_000)}.png"
 	url = upload_png(key, buf_out)

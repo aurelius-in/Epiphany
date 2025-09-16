@@ -5,6 +5,21 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist/**"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aurelius-in/Epiphany.git",
+    "directory": "epiphany/packages/sdk"
+  },
+  "homepage": "https://github.com/aurelius-in/Epiphany#readme",
+  "bugs": {
+    "url": "https://github.com/aurelius-in/Epiphany/issues"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",

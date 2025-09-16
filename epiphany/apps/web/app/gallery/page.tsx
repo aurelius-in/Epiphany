@@ -32,6 +32,7 @@ export default function GalleryPage() {
 	const [styles, setStyles] = useState<string[]>([])
 	const [modelId, setModelId] = useState('')
 	const [stylePreset, setStylePreset] = useState('')
+	const [autoLoad, setAutoLoad] = useState(true)
 
 	async function load(p = 1) {
 		setLoading(true)
@@ -61,6 +62,20 @@ export default function GalleryPage() {
 	}
 
 	useEffect(() => { load(1) }, [])
+	useEffect(() => {
+		if (!autoLoad) return
+		const el = document.getElementById('gallery-sentinel')
+		if (!el) return
+		const io = new IntersectionObserver((entries) => {
+			for (const e of entries) {
+				if (e.isIntersecting && nextPage && !loading) {
+					load(nextPage)
+				}
+			}
+		}, { rootMargin: '1200px' })
+		io.observe(el)
+		return () => io.disconnect()
+	}, [nextPage, loading, autoLoad])
 	useEffect(() => { (async () => { try { const r = await fetch('/api/proxy/v1/tags'); const j = await r.json(); setModels(j.models || []); setStyles(j.styles || []) } catch {} })() }, [])
 
 	function recreateHref(g: Generation) {
@@ -116,12 +131,7 @@ export default function GalleryPage() {
 							)}
 							{it.kind === 'video' && it.outputUrl && (
 								<div style={{position:'relative'}}>
-									<video src={it.outputUrl} style={{width:'100%', height:220, objectFit:'cover'}} muted />
-									<div style={{position:'absolute', inset:0, display:'grid', placeItems:'center'}}>
-										<div style={{width:44, height:44, borderRadius:'50%', background:'rgba(0,0,0,0.5)', border:'1px solid #fff3', display:'grid', placeItems:'center'}}>
-											<div style={{marginLeft:3, width:0, height:0, borderTop:'8px solid transparent', borderBottom:'8px solid transparent', borderLeft:'14px solid #fff'}} />
-										</div>
-									</div>
+									<video src={it.outputUrl} style={{width:'100%', height:220, objectFit:'cover'}} controls muted playsInline />
 								</div>
 							)}
 						</a>
@@ -129,6 +139,9 @@ export default function GalleryPage() {
 							<div>{it.kind} • {it.status} {it.createdAt && (<span style={{marginLeft:8, color:'#7c7c86'}}>{new Date(it.createdAt).toLocaleString()}</span>)}</div>
 							<div style={{display:'flex', gap:6, alignItems:'center'}}>
 								{it.safety && <span style={{border:'1px solid #26262a', padding:'2px 6px', borderRadius:8}}>{safetyLabel(it.safety)}</span>}
+								{it.safety && typeof (it.safety as any).nsfw === 'number' && (it.safety as any).nsfw > 0 && (
+									<button onClick={(e)=>{ e.preventDefault(); const container = (e.currentTarget.closest('div')?.parentElement?.previousElementSibling as HTMLElement); const img = container?.querySelector('img') as HTMLImageElement | null; if (img) img.style.filter = img.style.filter ? '' : 'blur(10px)'; }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'2px 6px', borderRadius:8}}>Toggle Blur</button>
+								)}
 								<a href={recreateHref(it)} style={{color:'#cfd0ff'}}>Recreate</a>
 								<a href={`/generations/${it.id}`} style={{color:'#cfd0ff'}}>Details</a>
 								<button onClick={async (e)=>{ e.preventDefault(); try { await fetch(`/api/proxy/v1/jobs/by-generation/${it.id}/cancel`, { method:'POST' }); } catch {} }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'4px 8px', borderRadius:8}}>Cancel</button>
@@ -139,8 +152,12 @@ export default function GalleryPage() {
 				))}
 			</div>
 			{nextPage && (
-				<div style={{marginTop: 12}}>
+				<div style={{marginTop: 12, display:'flex', alignItems:'center', gap:8}}>
 					<button onClick={() => load(nextPage!)} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'10px 14px', borderRadius:12}}>Load more</button>
+					<label style={{display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color:'#a4a4ad'}}>
+						<input type="checkbox" checked={autoLoad} onChange={e=>setAutoLoad(e.target.checked)} /> Auto-load
+					</label>
+					<div id="gallery-sentinel" style={{height:1}} />
 				</div>
 			)}
 		</div>
