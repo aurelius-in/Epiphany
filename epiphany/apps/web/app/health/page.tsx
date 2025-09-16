@@ -34,6 +34,9 @@ export default function HealthPage() {
 							<li key={k}>{k}: {String(v)}</li>
 						))}
 					</ul>
+					<div style={{marginTop: 12}}>
+						<a href="/api/proxy/v1/events" target="_blank" style={{color:'#cfd0ff'}}>Open Events JSON</a>
+					</div>
 				</div>
 			)}
 		</div>

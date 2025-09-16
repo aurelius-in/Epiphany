@@ -26,20 +26,11 @@ export async function enhance(baseUrl: string, apiKey: string, prompt: string) {
 	return enhanceRes.parse(j)
 }
 
-export async function getJob(baseUrl: string, apiKey: string, id: string) {
-	const r = await fetch(`${baseUrl}/v1/jobs/${id}`, { headers: headers(apiKey) })
+export async function getJob(baseUrl: string, apiKey: string, id: string, opts?: { signed?: boolean }) {
+	const q = opts?.signed ? '?signed=1' : ''
+	const r = await fetch(`${baseUrl}/v1/jobs/${id}${q}`, { headers: headers(apiKey) })
 	const j = await r.json()
 	return jobRes.parse(j)
-}
-
-export async function streamJob(baseUrl: string, apiKey: string, id: string, onEvent: (ev: any) => void) {
-	const url = `${baseUrl}/v1/jobs/${id}/stream`
-	const es = new EventSource(url, { withCredentials: false } as any)
-	es.onmessage = (e) => {
-		try { onEvent(JSON.parse(e.data)) } catch { /* noop */ }
-	}
-	es.onerror = () => { es.close() }
-	return es
 }
 
 const aspectEnum = z.enum(["1:1","16:9","9:16","3:2","2:3"]) as unknown as z.ZodEnum<["1:1","16:9","9:16","3:2","2:3"]>
@@ -85,10 +76,36 @@ export async function generateVideo(baseUrl: string, apiKey: string, req: z.infe
 	return z.object({ id: z.string() }).parse(j)
 }
 
-export async function listGenerations(baseUrl: string, apiKey: string, page = 1, limit = 50) {
-	const r = await fetch(`${baseUrl}/v1/generations?page=${page}&limit=${limit}`, { headers: headers(apiKey) })
+const generationSchema = z.object({
+	id: z.string(),
+	kind: z.enum(['image','video']),
+	status: z.string(),
+	outputUrl: z.string().nullable().optional(),
+	previewUrls: z.array(z.string()).nullable().optional(),
+	createdAt: z.string().nullable().optional(),
+	inputPrompt: z.string().nullable().optional(),
+	aspect: z.string().nullable().optional(),
+	steps: z.number().nullable().optional(),
+	cfg: z.number().nullable().optional(),
+	seed: z.number().nullable().optional(),
+	modelId: z.string().nullable().optional(),
+	stylePreset: z.string().nullable().optional(),
+	safety: z.any().nullable().optional(),
+})
+
+export async function listGenerations(baseUrl: string, apiKey: string, page = 1, limit = 50, opts?: { signed?: boolean }) {
+	const q = new URLSearchParams({ page: String(page), limit: String(limit) })
+	if (opts?.signed) q.set('signed','1')
+	const r = await fetch(`${baseUrl}/v1/generations?${q.toString()}`, { headers: headers(apiKey) })
 	const j = await r.json()
-	return z.object({ items: z.array(z.any()), nextPage: z.number().optional() }).parse(j)
+	return z.object({ items: z.array(generationSchema), nextPage: z.number().optional() }).parse(j)
+}
+
+export async function getGeneration(baseUrl: string, apiKey: string, id: string, opts?: { signed?: boolean }) {
+	const q = opts?.signed ? '?signed=1' : ''
+	const r = await fetch(`${baseUrl}/v1/generations/${id}${q}`, { headers: headers(apiKey) })
+	const j = await r.json()
+	return generationSchema.parse(j)
 }
 
 // Edit helpers
@@ -115,4 +132,24 @@ export async function resize(baseUrl: string, apiKey: string, imageUrl: string, 
 export async function caption(baseUrl: string, apiKey: string, imageUrl: string) {
 	const r = await fetch(`${baseUrl}/v1/edit/caption`, { method: 'POST', headers: headers(apiKey), body: JSON.stringify({ imageUrl }) })
 	return z.object({ id: z.string() }).parse(await r.json())
+}
+
+export async function listEvents(baseUrl: string, apiKey: string, params?: { generationId?: string, page?: number, limit?: number }) {
+	const q = new URLSearchParams()
+	if (params?.generationId) q.set('generationId', params.generationId)
+	if (params?.page) q.set('page', String(params.page))
+	if (params?.limit) q.set('limit', String(params.limit))
+	const r = await fetch(`${baseUrl}/v1/events?${q.toString()}`, { headers: headers(apiKey) })
+	const j = await r.json()
+	return z.object({ items: z.array(z.any()), nextPage: z.number().optional() }).parse(j)
+}
+
+export async function streamJob(baseUrl: string, apiKey: string, id: string, onEvent: (ev: any) => void) {
+	const url = `${baseUrl}/v1/jobs/${id}/stream`
+	const es = new EventSource(url, { withCredentials: false } as any)
+	es.onmessage = (e) => {
+		try { onEvent(JSON.parse(e.data)) } catch { /* noop */ }
+	}
+	es.onerror = () => { es.close() }
+	return es
 }
