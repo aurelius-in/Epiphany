@@ -32,6 +32,7 @@ export default function GalleryPage() {
 	const [styles, setStyles] = useState<string[]>([])
 	const [modelId, setModelId] = useState('')
 	const [stylePreset, setStylePreset] = useState('')
+	const [autoLoad, setAutoLoad] = useState(true)
 
 	async function load(p = 1) {
 		setLoading(true)
@@ -61,6 +62,20 @@ export default function GalleryPage() {
 	}
 
 	useEffect(() => { load(1) }, [])
+	useEffect(() => {
+		if (!autoLoad) return
+		const el = document.getElementById('gallery-sentinel')
+		if (!el) return
+		const io = new IntersectionObserver((entries) => {
+			for (const e of entries) {
+				if (e.isIntersecting && nextPage && !loading) {
+					load(nextPage)
+				}
+			}
+		}, { rootMargin: '1200px' })
+		io.observe(el)
+		return () => io.disconnect()
+	}, [nextPage, loading, autoLoad])
 	useEffect(() => { (async () => { try { const r = await fetch('/api/proxy/v1/tags'); const j = await r.json(); setModels(j.models || []); setStyles(j.styles || []) } catch {} })() }, [])
 
 	function recreateHref(g: Generation) {
@@ -137,8 +152,12 @@ export default function GalleryPage() {
 				))}
 			</div>
 			{nextPage && (
-				<div style={{marginTop: 12}}>
+				<div style={{marginTop: 12, display:'flex', alignItems:'center', gap:8}}>
 					<button onClick={() => load(nextPage!)} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'10px 14px', borderRadius:12}}>Load more</button>
+					<label style={{display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color:'#a4a4ad'}}>
+						<input type="checkbox" checked={autoLoad} onChange={e=>setAutoLoad(e.target.checked)} /> Auto-load
+					</label>
+					<div id="gallery-sentinel" style={{height:1}} />
 				</div>
 			)}
 		</div>
