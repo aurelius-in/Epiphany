@@ -1,5 +1,9 @@
 # Epiphany — AI Art Studio (Production-Ready)
 
+[![CI](https://github.com/aurelius-in/Epiphany/actions/workflows/ci.yml/badge.svg)](https://github.com/aurelius-in/Epiphany/actions/workflows/ci.yml)
+
+![Preview](./epiphany-preview.gif)
+
 Epiphany is a full‑stack AI art and video studio with image diffusion (SDXL), video generation (T2V, animate, stylize), post‑gen editing, explainability overlays, job queues with progress, and S3-backed asset storage.
 
 ## Stack
