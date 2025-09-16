@@ -151,12 +151,31 @@ r.get('/jobs/:id', async (req, res) => {
 	res.json({ id, status: statusMap[state] || state, progress, outputUrl: result?.output_url, previewUrls: result?.preview_urls, explainId: result?.explain_id, caption: result?.caption, error: failedReason })
 })
 
+r.post('/jobs/:id/cancel', async (req, res) => {
+	const id = String(req.params.id)
+	const candidates: Job[] = []
+	for (const q of Object.values(queues)) {
+		const j = await (q as any).getJob(id)
+		if (j) candidates.push(j)
+	}
+	if (candidates.length === 0) return res.status(404).json({ error: 'not_found' })
+	await Promise.all(candidates.map(j => j.remove().catch(() => {})))
+	res.json({ id, cancelled: true })
+})
+
 r.get('/generations', async (req, res) => {
 	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
 	const limit = Math.max(1, Math.min(100, parseInt(String(req.query.limit || '50')) || 50))
 	const items = await prisma.generation.findMany({ orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
 	const nextPage = items.length === limit ? page + 1 : undefined
 	res.json({ items, nextPage })
+})
+
+r.get('/generations/:id', async (req, res) => {
+	const id = String(req.params.id)
+	const gen = await prisma.generation.findUnique({ where: { id } }).catch(() => null)
+	if (!gen) return res.status(404).json({ error: 'not_found' })
+	res.json(gen)
 })
 
 r.get('/explain/:id', async (req, res) => {

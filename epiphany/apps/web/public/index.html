@@ -40,6 +40,8 @@
       <ul>
         <li>File</li><li>Edit</li><li>Image</li><li>Layer</li><li>Select</li>
         <li>Filter</li><li>View</li><li>Window</li><li>Help</li>
+        <li><a href="/health" style="color:inherit;text-decoration:none">Health</a></li>
+        <li><a href="/gallery" style="color:inherit;text-decoration:none">Gallery</a></li>
       </ul>
     </nav>
   </header>
@@ -242,7 +244,7 @@
   <!-- API wiring -->
   <script>
     (function(){
-      const API_BASE = window.EPIPHANY_API_BASE || 'http://localhost:4000';
+      const API_BASE = window.EPIPHANY_API_BASE || '/api/proxy';
       const API_KEY = (window.EPIPHANY_API_KEY || 'dev');
 
       const promptEl = document.querySelector('.prompt');

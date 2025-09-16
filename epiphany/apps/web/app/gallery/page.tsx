@@ -19,12 +19,11 @@ export default function GalleryPage() {
 	const [nextPage, setNextPage] = useState<number | undefined>(undefined)
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
-	const base = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000'
 
 	async function load(p = 1) {
 		setLoading(true)
 		try {
-			const res = await fetch(`${base}/v1/generations?page=${p}&limit=24`, { headers: { 'X-API-Key': 'dev' } })
+			const res = await fetch(`/api/proxy/v1/generations?page=${p}&limit=24`)
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
 			const data: ListRes = await res.json()
 			setItems(prev => p === 1 ? data.items : [...prev, ...data.items])

@@ -20,10 +20,11 @@ Do {
 	try {
 		$st = Invoke-RestMethod -Headers @{"X-API-Key"=$ApiKey} -Uri "$ApiBase/v1/jobs/$jobId" -Method GET
 		Write-Host "Status:" $st.status "Progress:" ($st.progress)
-		if ($st.status -eq 'completed' -or $st.outputUrl) { break }
+		if ($st.status -eq 'completed' -or $st.status -eq 'succeeded' -or $st.outputUrl) { break }
 	} catch {
 		Write-Host "poll error" $_
 	}
 } While ((Get-Date) -lt $deadline)
 
+if ($st.outputUrl) { Write-Host "Output:" $st.outputUrl }
 Write-Host "Done."

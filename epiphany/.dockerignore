@@ -1,0 +1,12 @@
+node_modules
+.pnpm-store
+.next
+.git
+.gitignore
+**/.DS_Store
+**/Thumbs.db
+dist
+build
+coverage
+.env
+.env.*
