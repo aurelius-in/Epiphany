@@ -20,13 +20,18 @@ export function tinyRateLimit(maxPerWindow = 120, windowMs = 60_000) {
 	return function(req: Request, res: Response, next: NextFunction) {
 		const ip = (req.ip || req.connection.remoteAddress || 'unknown') as string
 		const now = Date.now()
-		const cur = ipHits.get(ip)
+		let cur = ipHits.get(ip)
 		if (!cur || now >= cur.resetAt) {
-			ipHits.set(ip, { count: 1, resetAt: now + windowMs })
-			return next()
+			cur = { count: 0, resetAt: now + windowMs }
+			ipHits.set(ip, cur)
 		}
-		if (cur.count >= maxPerWindow) return res.status(429).json({ error: 'rate_limited' })
 		cur.count++
+		const remaining = Math.max(0, maxPerWindow - cur.count)
+		res.setHeader('X-RateLimit-Limit', String(maxPerWindow))
+		res.setHeader('X-RateLimit-Window', String(windowMs))
+		res.setHeader('X-RateLimit-Remaining', String(remaining))
+		res.setHeader('X-RateLimit-Reset', String(Math.max(0, cur.resetAt - now)))
+		if (cur.count > maxPerWindow) return res.status(429).json({ error: 'rate_limited' })
 		next()
 	}
 }
