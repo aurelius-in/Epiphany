@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI
+﻿from fastapi import FastAPI, Request
 import os
 import boto3
 from io import BytesIO
@@ -29,5 +29,10 @@ async def attention(id: str):
 	return {"id": id, "heatmap_urls": [url]}
 
 @app.get('/tokens/{id}')
-async def tokens(id: str):
-	return {"id": id, "token_scores": [{"token":"a","score":0.5}]}
+async def tokens(id: str, request: Request):
+	prompt = request.query_params.get('prompt') or ''
+	toks = [t for t in prompt.strip().split() if t] or ['prompt']
+	scores = []
+	for i, t in enumerate(toks):
+		scores.append({"token": t, "score": max(0.1, 1.0 - (i*0.1))})
+	return {"id": id, "token_scores": scores}

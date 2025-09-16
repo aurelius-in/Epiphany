@@ -35,7 +35,7 @@ async function processGenerateImage(job: Job) {
 				await prisma.asset.create({ data: { url: p, kind: 'image', mime: 'image/png' } })
 			}
 		}
-		const ex = await explainQueue.add('explain', { generationId: job.data.generationId }, { removeOnComplete: true, removeOnFail: true })
+		const ex = await explainQueue.add('explain', { generationId: job.data.generationId, prompt: job.data?.prompt }, { removeOnComplete: true, removeOnFail: true })
 		await job.updateProgress(100)
 		return { ...resp, explain_id: ex.id }
 	} catch (err: any) {
@@ -95,11 +95,13 @@ async function processEdit(job: Job) {
 async function processExplain(job: Job) {
 	try {
 		await job.updateProgress(10)
-		const attn = await getJson<any>('http://localhost:8004/attention/' + (job.data?.generationId || 'x'))
-		const tokens = await getJson<any>('http://localhost:8004/tokens/' + (job.data?.generationId || 'x'))
+		const genId = (job.data?.generationId || 'x') as string
+		const promptParam = job.data?.prompt ? `?prompt=${encodeURIComponent(String(job.data.prompt))}` : ''
+		const attn = await getJson<any>('http://localhost:8004/attention/' + genId)
+		const tokens = await getJson<any>('http://localhost:8004/tokens/' + genId + promptParam)
 		const tokenScores = (tokens && (tokens.token_scores ?? (tokens as any)['token_scores'])) || []
 		const heatmapUrls = (attn && (attn.heatmap_urls ?? (attn as any)['heatmap_urls'])) || []
-		const explain = await prisma.explain.create({ data: { generationId: job.data?.generationId || 'x', tokenScores, heatmapUrls } as any })
+		const explain = await prisma.explain.create({ data: { generationId: genId, tokenScores, heatmapUrls } as any })
 		await job.updateProgress(100)
 		return { explain_id: explain.id }
 	} catch (err: any) {
