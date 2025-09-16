@@ -23,6 +23,7 @@ _pipe = None
 _diffusers_available = False
 try:
     from diffusers import StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline
+    from diffusers import ControlNetModel, StableDiffusionXLControlNetPipeline
     import torch
     _diffusers_available = True
 except Exception:
@@ -307,7 +308,17 @@ async def controlnet(request: Request):
 	preview = bool(body.get('preview', False))
 	mode = int(body.get('mode', 1))
 	w, h = choose_dims(aspect, preview)
-	buf = make_image(w, h, color=(30, 30, 30))
+	buf = None
+	ctrl_img_url = (ctrl or {}).get('imageUrl')
+	if ctype == 'canny':
+		ctrl_bytes = fetch_bytes(ctrl_img_url or '')
+		try:
+			# will return None if unavailable
+			buf = try_controlnet_canny_with_diffusers(prompt, ctrl_bytes, float((ctrl or {}).get('strength') or 1.0), int(body.get('steps', 20) or 20), float(body.get('cfg', 7.0) or 7.0), w, h)
+		except Exception:
+			buf = None
+	# Fallback placeholder
+	buf = buf or make_image(w, h, color=(30, 30, 30))
 	key = f"gen/controlnet_{ctype or 'none'}_{random.randint(0, 1_000_000)}.png"
 	url = upload_png(key, buf)
 	meta = image_meta(buf, w, h)
@@ -325,4 +336,4 @@ async def controlnet(request: Request):
 		pkey = f"gen/redacted_{random.randint(0, 1_000_000)}.png"
 		purl = upload_png(pkey, red)
 		previews = [purl]
-	return {"output_url": url, "preview_urls": previews, "safety_scores": safety, "image_meta": meta, "echo": {"controlnet": ctrl}}
+	return {"output_url": url, "preview_urls": previews, "safety_scores": safety, "image_meta": meta, "echo": {"controlnet": ctrl, "usedDiffusers": buf is not None}}
