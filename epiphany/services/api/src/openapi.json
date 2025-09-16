@@ -1,0 +1,71 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Epiphany API",
+    "version": "0.1.0",
+    "description": "Minimal OpenAPI for core Epiphany endpoints"
+  },
+  "servers": [
+    { "url": "http://localhost:4000" }
+  ],
+  "paths": {
+    "/v1/health": { "get": { "summary": "Health summary", "responses": { "200": { "description": "OK" } } } },
+    "/v1/healthz": { "get": { "summary": "Liveness", "responses": { "200": { "description": "OK" } } } },
+    "/v1/generate/image": {
+      "post": {
+        "summary": "Generate image",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenerateImageRequest" } } } },
+        "responses": { "200": { "description": "Enqueued", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EnqueueResponse" } } } } }
+      }
+    },
+    "/v1/generate/video": {
+      "post": {
+        "summary": "Generate video",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenerateVideoRequest" } } } },
+        "responses": { "200": { "description": "Enqueued", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EnqueueResponse" } } } } }
+      }
+    },
+    "/v1/jobs/{id}": {
+      "get": {
+        "summary": "Get job status",
+        "parameters": [ { "in": "path", "name": "id", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "Status" } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EnqueueResponse": { "type": "object", "properties": { "id": { "type": "string" } }, "required": ["id"] },
+      "GenerateImageRequest": {
+        "type": "object",
+        "properties": {
+          "prompt": { "type": "string" },
+          "mode": { "type": "integer", "enum": [0,1,2] },
+          "stylePreset": { "type": "string" },
+          "aspect": { "type": "string" },
+          "steps": { "type": "integer" },
+          "cfg": { "type": "number" },
+          "seed": { "type": "integer", "nullable": true },
+          "modelId": { "type": "string" },
+          "initImageUrl": { "type": "string" },
+          "maskUrl": { "type": "string" }
+        },
+        "required": ["prompt","mode"]
+      },
+      "GenerateVideoRequest": {
+        "type": "object",
+        "properties": {
+          "prompt": { "type": "string" },
+          "mode": { "type": "integer", "enum": [0,1,2] },
+          "fps": { "type": "integer" },
+          "resolution": { "type": "string", "enum": ["576p","720p"] },
+          "durationSec": { "type": "integer" },
+          "sourceImageUrl": { "type": "string" },
+          "stylize": { "type": "boolean" },
+          "modelId": { "type": "string", "enum": ["svd","modelscope-t2v"] }
+        },
+        "required": ["prompt","mode"]
+      }
+    }
+  }
+}
