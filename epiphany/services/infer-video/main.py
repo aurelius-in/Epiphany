@@ -161,10 +161,31 @@ async def animate(request: Request):
 
 @app.post('/infer/stylize')
 async def stylize(request: Request):
-	_ = await request.json()
-	raw = BytesIO()
-	raw.write(b"Epiphany stylize stub")
+	body = await request.json()
+	fps = int(body.get('fps') or 12)
+	duration_sec = int(body.get('durationSec') or 4)
+	resolution = str(body.get('resolution') or '576p')
+	w, h = (1024, 576) if resolution == '576p' else (1280, 720)
+	total = max(1, fps * duration_sec)
+	frames = []
+	try:
+		import numpy as np
+		for i in range(total):
+			den = max(1, total-1)
+			t = i/den
+			# simple stylization gradient sweep
+			r = int(255 * abs(np.sin(np.pi * t)))
+			g = int(255 * abs(np.sin(np.pi * (t + 1/3))))
+			b = int(255 * abs(np.sin(np.pi * (t + 2/3))))
+			frame = np.zeros((h, w, 3), dtype=np.uint8)
+			frame[:, :, 0] = r
+			frame[:, :, 1] = g
+			frame[:, :, 2] = b
+			frames.append(frame)
+		buf = BytesIO(); imageio.mimsave(buf, frames, format='FFMPEG', fps=fps)
+	except Exception:
+		buf = BytesIO(); buf.write(b"Epiphany stylize stub")
 	key = f"gen/stylize_{random.randint(0, 1_000_000)}.mp4"
-	url = upload_bytes(key, raw, 'video/mp4')
-	meta = bytes_meta(raw)
+	url = upload_bytes(key, buf, 'video/mp4')
+	meta = bytes_meta(buf)
 	return {"output_url": url, "model_hash": MODEL_ID, "duration_ms": 1, "video_meta": meta}

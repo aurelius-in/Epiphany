@@ -102,7 +102,8 @@ const genVideoSchema = z.object({
 	resolution: z.enum(["576p","720p"]).optional(),
 	seed: z.number().int().min(0).max(2_147_483_647).nullable().optional(),
 	modelId: z.enum(["svd","modelscope-t2v"]).optional(),
-	sourceImageUrl: z.string().url().optional()
+	sourceImageUrl: z.string().url().optional(),
+	stylize: z.boolean().optional(),
 })
 
 r.post('/generate/video', async (req, res) => {
@@ -196,7 +197,7 @@ r.get('/jobs/:id', async (req, res) => {
 	const statusMap: Record<string,string> = { waiting: 'queued', delayed: 'queued', active: 'running', completed: 'succeeded', failed: 'failed', paused: 'queued' }
 	const outputUrl = result?.output_url
 	const previewUrls = Array.isArray(result?.preview_urls) ? result.preview_urls : undefined
-	res.json({ id, status: statusMap[state] || state, progress, outputUrl: signed ? maybeSign(outputUrl, true, ttl) : outputUrl, previewUrls: signed && previewUrls ? previewUrls.map((u: string) => maybeSign(u, true, ttl)) : previewUrls, explainId: result?.explain_id, caption: result?.caption, error: failedReason })
+	res.json({ id, status: statusMap[state] || state, progress, outputUrl: signed ? maybeSign(outputUrl, true, ttl) : outputUrl, previewUrls: signed && previewUrls ? previewUrls.map((u: string) => maybeSign(u, true, ttl)) : previewUrls, explainId: result?.explain_id, caption: result?.caption, safety: result?.safety_scores, error: failedReason })
 })
 
 r.get('/jobs/:id/stream', async (req, res) => {

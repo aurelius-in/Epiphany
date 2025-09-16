@@ -36,6 +36,7 @@ export const jobRes = z.object({
 	previewUrls: z.array(z.string()).optional(),
 	explainId: z.string().optional(),
 	caption: z.string().optional(),
+	safety: z.any().optional(),
 	error: z.string().optional(),
 })
 
@@ -113,6 +114,7 @@ export const genVideoReq = z.object({
 	seed: z.number().nullable().optional(),
 	modelId: z.enum(["svd","modelscope-t2v"]).optional(),
 	sourceImageUrl: z.string().url().optional(),
+	stylize: z.boolean().optional(),
 })
 
 export async function generateVideo(baseUrl: string, apiKey: string, req: z.infer<typeof genVideoReq>) {

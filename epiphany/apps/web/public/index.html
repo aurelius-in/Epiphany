@@ -220,6 +220,13 @@
           </div>
           <input id="videoSourceFile" type="file" accept="image/*" class="input" />
         </div>
+        <div>
+          <label class="field-label" for="videoStylize">Stylize</label>
+          <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+            <input id="videoStylize" type="checkbox" />
+            <span style="font-size:12px;color:#a4a4ad">Apply stylization to input/video</span>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -229,7 +236,10 @@
         <div class="panel-title">Result</div>
         <div class="panel-body result-body" id="resultBody">
           <!-- Preloaded output -->
-          <img id="resultImg" class="result-img" src="gen-ai.gif" alt="Generated result">
+          <div id="resultStack" style="position:relative;display:inline-block">
+            <img id="resultImg" class="result-img" src="gen-ai.gif" alt="Generated result">
+            <img id="explainOverlay" alt="Explain heatmap" style="position:absolute;inset:0;mix-blend-mode:overlay;opacity:0;pointer-events:none;display:none;border-radius:12px" />
+          </div>
         </div>
         <div class="result-meta" id="resultMeta">
           <span class="chip">Mode: <strong id="metaMode">Safe</strong></span>
@@ -238,6 +248,13 @@
           <span class="chip">CFG: <strong id="metaCFG">6.5</strong></span>
           <span class="chip">Seed: <strong id="metaSeed">random</strong></span>
           <span class="chip" id="metaCaption" style="display:none;">Caption: <strong></strong></span>
+          <label style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#a4a4ad">
+            <input id="nsfwBlurToggle" type="checkbox" checked /> Blur NSFW
+          </label>
+          <label style="margin-left:8px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#a4a4ad">
+            <input id="explainToggle" type="checkbox" /> Explain
+          </label>
+          <input id="explainOpacity" type="range" min="0" max="1" step="0.05" value="0.6" style="width:90px" />
         </div>
       </div>
 
@@ -472,13 +489,49 @@
       const durationSelect = document.getElementById('durationSelect');
       const videoUseInit = document.getElementById('videoUseInit');
       const videoSourceFile = document.getElementById('videoSourceFile');
+      const videoStylize = document.getElementById('videoStylize');
       const initFile = document.getElementById('initFile');
       const maskFile = document.getElementById('maskFile');
       const resultImg = document.getElementById('resultImg');
+      const resultStack = document.getElementById('resultStack');
+      const explainOverlay = document.getElementById('explainOverlay');
       const resultBody = document.getElementById('resultBody');
       const resultMeta = document.getElementById('resultMeta');
       const historyList = document.querySelector('.history-list');
       const captionChip = document.getElementById('metaCaption');
+      const nsfwBlurToggle = document.getElementById('nsfwBlurToggle');
+      const explainToggle = document.getElementById('explainToggle');
+      const explainOpacity = document.getElementById('explainOpacity');
+      try { const saved = localStorage.getItem('nsfw_blur'); if (saved != null && nsfwBlurToggle) nsfwBlurToggle.checked = saved !== '0'; } catch {}
+      nsfwBlurToggle?.addEventListener('change', () => { try { localStorage.setItem('nsfw_blur', nsfwBlurToggle.checked ? '1' : '0') } catch {} if ((resultImg as any)._lastSafety != null) applySafetyBlur((resultImg as any)._lastSafety); });
+
+      function applySafetyBlur(safety){
+        try{
+          (resultImg as any)._lastSafety = safety;
+          const nsfw = !!(safety && ((safety.nsfw ?? safety['nsfw']) || 0) > 0);
+          const on = !!(nsfwBlurToggle && nsfwBlurToggle.checked);
+          resultImg.style.filter = on && nsfw ? 'blur(14px)' : '';
+        }catch(_){ }
+      }
+
+      async function loadExplain(explainId){
+        try{
+          const r = await fetch(`${API_BASE}/v1/explain/${encodeURIComponent(String(explainId))}`, { headers: headers() });
+          if (!r.ok) return null;
+          const j = await r.json();
+          const heat = (j && Array.isArray(j.heatmapUrls) && j.heatmapUrls[0]) ? j.heatmapUrls[0] : null;
+          if (heat && explainOverlay){ explainOverlay.src = heat; explainOverlay.style.display = 'block'; }
+          return j;
+        }catch(_){ return null }
+      }
+      function syncExplain(){
+        if (!explainOverlay) return;
+        const on = !!(explainToggle && explainToggle.checked);
+        explainOverlay.style.opacity = on ? String((explainOpacity && explainOpacity.value) || 0.6) : '0';
+      }
+      explainToggle?.addEventListener('change', syncExplain);
+      explainOpacity?.addEventListener('input', syncExplain);
+
       const i2iStrength = document.getElementById('i2iStrength');
       const i2iStrengthVal = document.getElementById('i2iStrengthVal');
 
@@ -692,7 +745,10 @@
           if (st.outputUrl){
             resultBody.innerHTML = '';
             resultImg.src = st.outputUrl;
-            resultBody.appendChild(resultImg);
+            applySafetyBlur(st.safety);
+            resultBody.appendChild(resultStack);
+            if (st.explainId) { await loadExplain(st.explainId); }
+            syncExplain();
             if (Array.isArray(st.previewUrls) && st.previewUrls.length) {
               const pwrap = document.createElement('div'); pwrap.style.display='flex'; pwrap.style.gap='6px'; pwrap.style.marginTop='8px';
               for (const p of st.previewUrls) { const im = document.createElement('img'); im.src = p; im.style.width='64px'; im.style.height='64px'; im.style.objectFit='cover'; im.style.border='1px solid #26262a'; im.style.borderRadius='6px'; pwrap.appendChild(im); }
@@ -703,7 +759,7 @@
               const a = document.createElement('a'); a.href = st.outputUrl; a.target = '_blank'; a.rel='noreferrer'; a.textContent = body.prompt.slice(0,80) || 'result';
               li.appendChild(a);
               if (st.explainId){
-                const ex = document.createElement('a'); ex.href = `/explain/${st.explainId}`
+                const ex = document.createElement('a'); ex.href = `/explain/${st.explainId}`; ex.textContent = ' explain'; ex.target = '_blank'; ex.rel = 'noreferrer'; li.appendChild(ex)
               }
             }
           }
@@ -724,6 +780,7 @@
             resolution: String((resSelect && resSelect.value) || '576p'),
             durationSec: Number((durationSelect && durationSelect.value) || 4),
             sourceImageUrl: sourceUrl || undefined,
+            stylize: !!(videoStylize && videoStylize.checked),
           };
           const j = await postJson(`${API_BASE}/v1/generate/video`, body);
           window.lastJobId = j.id;
