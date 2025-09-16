@@ -5,6 +5,8 @@ from io import BytesIO
 from PIL import Image
 import hashlib
 import random
+import base64
+from typing import Tuple
 
 app = FastAPI(title="Epiphany Edit")
 
@@ -32,6 +34,20 @@ def image_meta(buf: BytesIO, width: int, height: int):
 	sha256 = hashlib.sha256(data).hexdigest()
 	return {"width": width, "height": height, "bytes": len(data), "sha256": sha256}
 
+def fetch_image(url: str) -> Tuple[BytesIO, int, int]:
+    # Minimal fetcher: support data URLs (base64) for demo; otherwise return blank
+    if url.startswith('data:image/') and ';base64,' in url:
+        head, b64 = url.split(',', 1)
+        raw = base64.b64decode(b64)
+        im = Image.open(BytesIO(raw)).convert('RGBA')
+        buf = BytesIO()
+        im.save(buf, format='PNG')
+        return buf, im.width, im.height
+    # For brevity, skip HTTP fetch – demo environment uses data URLs
+    im = Image.new('RGBA', (512,512), (0,0,0,0))
+    buf = BytesIO(); im.save(buf, format='PNG')
+    return buf, 512, 512
+
 @app.get('/health')
 async def health():
 	return {"ok": True}
@@ -54,11 +70,21 @@ async def restore_face(request: Request):
 
 @app.post('/remove-bg')
 async def remove_bg(request: Request):
-	_ = await request.json()
-	buf = make_image(640, 640, color=(0,0,0))
+	body = await request.json()
+	image_url = body.get('imageUrl')
+	buf_in, w, h = fetch_image(image_url or '')
+	# Simple matting: convert non-transparent image to alpha mask if provided; placeholder keeps transparent
+	im = Image.open(BytesIO(buf_in.getvalue())).convert('RGBA')
+	# Placeholder "remove bg": set background to transparent by thresholding near-black pixels
+	px = im.load()
+	for y in range(im.height):
+		for x in range(im.width):
+			r,g,b,a = px[x,y]
+			if r < 20 and g < 20 and b < 20: px[x,y] = (r,g,b,0)
+	buf_out = BytesIO(); im.save(buf_out, format='PNG')
 	key = f"edit/nobg_{random.randint(0,1_000_000)}.png"
-	url = upload_png(key, buf)
-	return {"output_url": url, "image_meta": image_meta(buf, 640, 640)}
+	url = upload_png(key, buf_out)
+	return {"output_url": url, "image_meta": image_meta(buf_out, w, h)}
 
 @app.post('/crop')
 async def crop(request: Request):
