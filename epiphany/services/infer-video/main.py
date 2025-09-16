@@ -26,6 +26,11 @@ _diffusers_available = False
 try:
 	from diffusers import StableVideoDiffusionPipeline
 	import torch
+	try:
+		if torch.cuda.is_available():
+			torch.backends.cudnn.benchmark = True
+	except Exception:
+		pass
 	_diffusers_available = True
 except Exception:
 	_diffusers_available = False
