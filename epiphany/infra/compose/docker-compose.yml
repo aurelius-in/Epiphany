@@ -39,6 +39,7 @@ services:
       S3_BUCKET: ${S3_BUCKET}
       API_KEY: ${API_KEY}
       ALLOW_NSWF: ${ALLOW_NSWF}
+      WEB_ORIGIN: http://localhost:3000
     ports: ["4000:4000"]
     depends_on: [postgres, redis, minio]
 

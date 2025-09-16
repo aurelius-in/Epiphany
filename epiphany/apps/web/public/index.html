@@ -150,6 +150,7 @@
           <span class="chip">Steps: <strong id="metaSteps">28</strong></span>
           <span class="chip">CFG: <strong id="metaCFG">6.5</strong></span>
           <span class="chip">Seed: <strong id="metaSeed">random</strong></span>
+          <span class="chip" id="metaCaption" style="display:none;">Caption: <strong></strong></span>
         </div>
       </div>
 
@@ -236,6 +237,161 @@
       // stub: no-op for now
       alert('Enhance Prompt (demo stub)');
     });
+  </script>
+
+  <!-- API wiring -->
+  <script>
+    (function(){
+      const API_BASE = window.EPIPHANY_API_BASE || 'http://localhost:4000';
+      const API_KEY = (window.EPIPHANY_API_KEY || 'dev');
+
+      const promptEl = document.querySelector('.prompt');
+      const styleEl = document.getElementById('styleSelect');
+      const modelEl = document.getElementById('modelSelect');
+      const arEl = document.getElementById('arSelect');
+      const stepsEl = document.getElementById('stepsInput');
+      const cfgEl = document.getElementById('cfgInput');
+      const seedEl = document.getElementById('seedInput');
+      const genBtn = document.getElementById('btnGenerate');
+      const resultImg = document.getElementById('resultImg');
+      const resultBody = document.getElementById('resultBody');
+      const resultMeta = document.getElementById('resultMeta');
+      const historyList = document.querySelector('.history-list');
+      const captionChip = document.getElementById('metaCaption');
+
+      function headers() {
+        return { 'Content-Type': 'application/json', 'X-API-Key': API_KEY };
+      }
+      async function postJson(url, body) {
+        const res = await fetch(url, { method: 'POST', headers: headers(), body: JSON.stringify(body) });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      }
+      async function getJson(url) {
+        const res = await fetch(url, { headers: headers() });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      }
+      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+      function mapModel(v){
+        const m = String(v || '').toLowerCase();
+        if (m.includes('refiner')) return 'sdxl-refiner';
+        if (m.includes('photoreal')) return 'photoreal-xl';
+        if (m.includes('anime')) return 'anime-xl';
+        return 'sdxl-base';
+      }
+      function mapAR(v){
+        const s = String(v || '').split(' ')[0];
+        return ['1:1','16:9','9:16','3:2','2:3'].includes(s) ? s : '1:1';
+      }
+
+      async function pollJob(id){
+        for (let i=0; i<120; i++){
+          const st = await getJson(`${API_BASE}/v1/jobs/${id}`);
+          if (st.status === 'succeeded' || st.outputUrl) return st;
+          if (st.status === 'failed') throw new Error(st.error || 'Job failed');
+          await sleep(1500);
+        }
+        throw new Error('Timeout');
+      }
+
+      function ensureEditButtons(){
+        if (document.getElementById('editBtns')) return;
+        const wrap = document.createElement('div');
+        wrap.id = 'editBtns';
+        wrap.style.display = 'flex';
+        wrap.style.gap = '8px';
+        const mk = (id, label) => { const b = document.createElement('button'); b.id = id; b.className='btn-ghost'; b.textContent = label; return b; };
+        const bUpscale = mk('btnUpscale','Upscale 4x');
+        const bRemBG = mk('btnRemBG','Remove BG');
+        const bFace = mk('btnFace','Restore Face');
+        const bCaption = mk('btnCaption','Caption');
+        const bDownload = mk('btnDownload','Download');
+        wrap.append(bUpscale,bRemBG,bFace,bCaption,bDownload);
+        resultMeta.appendChild(wrap);
+
+        bUpscale.addEventListener('click', async () => {
+          const url = resultImg.getAttribute('src'); if (!url) return;
+          const j = await postJson(`${API_BASE}/v1/edit/upscale`, { imageUrl: url, scale: 4 });
+          await pollJob(j.id);
+          const st = await getJson(`${API_BASE}/v1/jobs/${j.id}`);
+          if (st.outputUrl) resultImg.src = st.outputUrl;
+        });
+        bRemBG.addEventListener('click', async () => {
+          const url = resultImg.getAttribute('src'); if (!url) return;
+          const j = await postJson(`${API_BASE}/v1/edit/remove-bg`, { imageUrl: url });
+          await pollJob(j.id);
+          const st = await getJson(`${API_BASE}/v1/jobs/${j.id}`);
+          if (st.outputUrl) resultImg.src = st.outputUrl;
+        });
+        bFace.addEventListener('click', async () => {
+          const url = resultImg.getAttribute('src'); if (!url) return;
+          const j = await postJson(`${API_BASE}/v1/edit/restore-face`, { imageUrl: url });
+          await pollJob(j.id);
+          const st = await getJson(`${API_BASE}/v1/jobs/${j.id}`);
+          if (st.outputUrl) resultImg.src = st.outputUrl;
+        });
+        bCaption.addEventListener('click', async () => {
+          const url = resultImg.getAttribute('src'); if (!url) return;
+          const j = await postJson(`${API_BASE}/v1/edit/caption`, { imageUrl: url });
+          const st = await pollJob(j.id);
+          if (captionChip){
+            captionChip.style.display = 'inline-flex';
+            captionChip.querySelector('strong').textContent = st.caption || 'generated';
+          }
+        });
+        bDownload.addEventListener('click', async () => {
+          const url = resultImg.getAttribute('src'); if (!url) return;
+          const a = document.createElement('a');
+          a.href = url; a.download = 'epiphany.png';
+          document.body.appendChild(a); a.click(); a.remove();
+        });
+      }
+
+      async function onGenerate(){
+        try {
+          ensureEditButtons();
+          resultBody.innerHTML = '<div class="result-placeholder">Generating…</div>';
+          const body = {
+            prompt: String(promptEl.value || '').slice(0,2000),
+            mode: Number(modeRange.value || 0),
+            stylePreset: styleEl.value && styleEl.value.startsWith('—') ? undefined : styleEl.value,
+            aspect: mapAR(arEl.value),
+            steps: Number(stepsEl.value || 28),
+            cfg: Number(cfgEl.value || 6.5),
+            seed: seedEl.value ? Number(seedEl.value) : null,
+            modelId: mapModel(modelEl.value),
+            preview: false,
+          };
+          const j = await postJson(`${API_BASE}/v1/generate/image`, body);
+          const st = await pollJob(j.id);
+          if (st.outputUrl){
+            resultBody.innerHTML = '';
+            resultImg.src = st.outputUrl;
+            resultBody.appendChild(resultImg);
+            if (historyList){
+              const li = document.createElement('li'); li.className='history-item';
+              const a = document.createElement('a'); a.href = st.outputUrl; a.target = '_blank'; a.rel='noreferrer'; a.textContent = body.prompt.slice(0,80) || 'result';
+              li.appendChild(a);
+              if (st.explainId){
+                const ex = document.createElement('a'); ex.href = `/explain/${st.explainId}`; ex.target='_blank'; ex.style.marginLeft='8px'; ex.textContent='Explain';
+                li.appendChild(ex);
+              }
+              historyList.prepend(li);
+            }
+            if (captionChip){ captionChip.style.display='none'; captionChip.querySelector('strong').textContent=''; }
+          }
+        } catch (err){
+          resultBody.innerHTML = `<div class=\"result-placeholder\">Error: ${String(err)}</div>`;
+        }
+      }
+
+      genBtn?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await onGenerate();
+      });
+    })();
   </script>
 </body>
 </html>

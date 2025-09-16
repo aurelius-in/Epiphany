@@ -63,6 +63,7 @@ async function processEdit(job: Job) {
 			'remove-bg': 'http://localhost:8003/remove-bg',
 			'crop': 'http://localhost:8003/crop',
 			'resize': 'http://localhost:8003/resize',
+			'caption': 'http://localhost:8003/caption',
 		}
 		const url = map[task] || 'http://localhost:8003/upscale'
 		const resp = await postJson<any>(url, job.data)
