@@ -250,6 +250,15 @@ r.get('/generations/:id', async (req, res) => {
 	res.json(out)
 })
 
+r.get('/generations/:id/events', async (req, res) => {
+	const id = String(req.params.id)
+	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
+	const limit = Math.max(1, Math.min(200, parseInt(String(req.query.limit || '100')) || 100))
+	const items = await prisma.event.findMany({ where: { generationId: id }, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
+	const nextPage = items.length === limit ? page + 1 : undefined
+	res.json({ items, nextPage })
+})
+
 r.get('/explain/:id', async (req, res) => {
 	const id = req.params.id
 	const byId = await prisma.explain.findUnique({ where: { id } }).catch(() => null)

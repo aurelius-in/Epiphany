@@ -173,3 +173,12 @@ export async function listAssets(baseUrl: string, apiKey: string, page = 1, limi
 	const j = await r.json()
 	return z.object({ items: z.array(z.any()), nextPage: z.number().optional() }).parse(j)
 }
+
+export async function listGenerationEvents(baseUrl: string, apiKey: string, generationId: string, page = 1, limit = 100) {
+	const q = new URLSearchParams({ page: String(page), limit: String(limit) })
+	const r = await fetch(`${baseUrl}/v1/generations/${generationId}/events?${q.toString()}`, { headers: headers(apiKey) })
+	const j = await r.json()
+	return z.object({ items: z.array(z.any()), nextPage: z.number().optional() }).parse(j)
+}
+
+export type { z } from 'zod'

@@ -46,3 +46,9 @@ for i in {1..15}; do
   if [[ "$(echo "$ST" | jq -r .outputUrl)" != "null" ]]; then break; fi
   sleep 2
 done
+
+echo "assets..."
+curl -sSf -H "X-API-Key: $API_KEY" "$API_BASE/v1/assets?signed=1&limit=5" | jq -r '.items[0].url' || true
+
+echo "events..."
+curl -sSf -H "X-API-Key: $API_KEY" "$API_BASE/v1/events?limit=5" | jq -r '.items[0].type' || true

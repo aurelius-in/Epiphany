@@ -270,10 +270,17 @@
       seedInp.value = r;
       updateMetaFromControls();
     });
-    document.getElementById('btnEnhance')?.addEventListener('click', (e) => {
+    document.getElementById('btnEnhance')?.addEventListener('click', async (e) => {
       e.preventDefault();
-      // stub: no-op for now
-      alert('Enhance Prompt (demo stub)');
+      try{
+        const res = await postJson(`${API_BASE}/v1/enhance`, { prompt: String(promptEl.value || '') });
+        if (res && res.promptEnhanced) {
+          promptEl.value = res.promptEnhanced;
+          updateMetaFromControls();
+        }
+      }catch(err){
+        console.error('enhance failed', err);
+      }
     });
   </script>
 
