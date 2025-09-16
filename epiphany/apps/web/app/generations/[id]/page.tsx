@@ -22,6 +22,7 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 	const [gen, setGen] = useState<Generation | null>(null)
 	const [events, setEvents] = useState<EventsRes | null>(null)
 	const [error, setError] = useState<string | null>(null)
+	const [progress, setProgress] = useState<number | null>(null)
 	const id = params.id
 
 	useEffect(() => {
@@ -31,6 +32,14 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 				setGen(g)
 				const ev = await fetch(`/api/proxy/v1/generations/${id}/events?limit=50`).then(r => r.json())
 				setEvents(ev)
+				try {
+					const jb = await fetch(`/api/proxy/v1/jobs/by-generation/${id}`).then(r=>r.ok?r.json():null)
+					if (jb?.id) {
+						const es = new EventSource(`/api/proxy/v1/jobs/${jb.id}/stream`)
+						es.onmessage = (e) => { try { const ev = JSON.parse(e.data); if (typeof ev.progress === 'number') setProgress(ev.progress) } catch {} }
+						es.onerror = () => { try { es.close() } catch {} }
+					}
+				} catch {}
 			} catch (e: any) {
 				setError(e.message)
 			}
@@ -57,6 +66,7 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 			<div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
 				<h1>Generation {gen.id}</h1>
 				<div style={{display:'flex', gap:8}}>
+					{progress != null && <span style={{border:'1px solid #26262a', padding:'6px 10px', borderRadius:8}}>Progress: {progress}%</span>}
 					<button onClick={async()=>{ try{ await fetch(`/api/proxy/v1/explain/${id}/refresh`, { method:'POST' }); location.reload() }catch{} }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Refresh Explain</button>
 					<button onClick={onCancel} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Cancel</button>
 					<button onClick={onDelete} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Delete</button>

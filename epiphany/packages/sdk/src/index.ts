@@ -268,4 +268,33 @@ export async function getConfig(baseUrl: string, apiKey: string) {
 	return await r.json()
 }
 
+export async function waitForJob(baseUrl: string, apiKey: string, id: string, opts?: { signed?: boolean, ttlSec?: number, timeoutMs?: number, onProgress?: (p: number) => void }) {
+	const timeout = opts?.timeoutMs ?? 120_000
+	const start = Date.now()
+	let done = false
+	try {
+		const url = `${baseUrl}/v1/jobs/${id}/stream`
+		const es = new EventSource(url, { withCredentials: false } as any)
+		es.onmessage = async (e) => {
+			try {
+				const ev = JSON.parse(e.data)
+				if (typeof ev.progress === 'number' && opts?.onProgress) opts.onProgress(ev.progress)
+				if (ev.done) {
+					es.close()
+					done = true
+				}
+			} catch {}
+		}
+		es.onerror = () => { try { es.close() } catch {} }
+	} catch {}
+	while (!done && Date.now() - start < timeout) {
+		await new Promise(r => setTimeout(r, 1200))
+		const st = await getJob(baseUrl, apiKey, id, { signed: opts?.signed, ttlSec: opts?.ttlSec })
+		if (opts?.onProgress && typeof st.progress === 'number') opts.onProgress(st.progress)
+		if (st.status === 'succeeded' || st.outputUrl) return st
+		if (st.status === 'failed') return st
+	}
+	return getJob(baseUrl, apiKey, id, { signed: opts?.signed, ttlSec: opts?.ttlSec })
+}
+
 export type { z } from 'zod'

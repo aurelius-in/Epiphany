@@ -31,7 +31,7 @@ export default function GalleryPage() {
 	async function load(p = 1) {
 		setLoading(true)
 		try {
-			const res = await fetch(`/api/proxy/v1/generations?page=${p}&limit=24&signed=1`)
+			const res = await fetch(`/api/proxy/v1/generations?page=${p}&limit=24&signed=1&ttl=900`)
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
 			const data: ListRes = await res.json()
 			setItems(prev => p === 1 ? data.items : [...prev, ...data.items])
