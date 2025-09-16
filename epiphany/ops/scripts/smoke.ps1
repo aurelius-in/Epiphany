@@ -45,6 +45,22 @@ Do {
 	}
 } While ((Get-Date) -lt $deadline)
 
+Write-Host "Animate job (image->video)..."
+$bodyA = @{ prompt = "animate this"; mode = 0; sourceImageUrl = "http://example.com/foo.png" } | ConvertTo-Json
+$jobA = Invoke-RestMethod -Headers @{"X-API-Key"=$ApiKey; "Content-Type"="application/json"} -Uri "$ApiBase/v1/generate/video" -Method POST -Body $bodyA
+$jobAId = $jobA.id
+$deadline = (Get-Date).AddMinutes(2)
+Do {
+    Start-Sleep -Seconds 2
+    try {
+        $stA = Invoke-RestMethod -Headers @{"X-API-Key"=$ApiKey} -Uri "$ApiBase/v1/jobs/$jobAId?signed=1" -Method GET
+        Write-Host "AStatus:" $stA.status "Progress:" ($stA.progress)
+        if ($stA.outputUrl) { break }
+    } catch {
+        Write-Host "poll error" $_
+    }
+} While ((Get-Date) -lt $deadline)
+
 Write-Host "Assets..."
 $assets = Invoke-RestMethod -Headers @{"X-API-Key"=$ApiKey} -Uri "$ApiBase/v1/assets?signed=1&limit=5" -Method GET
 if ($assets.items.Count -gt 0) { Write-Host "Asset URL:" $assets.items[0].url }
