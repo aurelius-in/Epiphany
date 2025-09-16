@@ -32,9 +32,13 @@ app.get('/v1/health', async (_req, res) => {
 })
 
 app.post('/v1/enhance', (req, res) => {
-	const prompt = String((req.body?.prompt ?? '')).trim()
+	const raw = String((req.body?.prompt ?? '')).trim()
+	let prompt = raw
+	if (!/\b(photoreal|cinematic|illustration|anime|watercolor|noir)\b/i.test(prompt)) {
+		prompt = `${prompt}${prompt ? ', ' : ''}cinematic, high detail`
+	}
 	const seedPhrases = prompt ? [prompt.split(',')[0].trim()].filter(Boolean) : []
-	res.json({ promptEnhanced: prompt || 'a detailed high-quality image', seedPhrases })
+	res.json({ promptEnhanced: prompt || 'a detailed high-quality image, cinematic, high detail', seedPhrases })
 })
 
 app.use('/v1', urlAllowlist())

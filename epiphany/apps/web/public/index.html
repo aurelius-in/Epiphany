@@ -221,6 +221,33 @@
     setMode(modeRange.value);
     updateMetaFromControls();
 
+    // Apply query params to prefill controls
+    (function applyQuery(){
+      try{
+        const q = new URLSearchParams(location.search);
+        const p = q.get('prompt'); if (p) document.querySelector('.prompt').value = p;
+        const aspect = q.get('aspect'); if (aspect) arSelect.value = aspect;
+        const steps = q.get('steps'); if (steps) stepsInp.value = steps;
+        const cfg = q.get('cfg'); if (cfg) cfgInp.value = cfg;
+        const seed = q.get('seed'); if (seed) seedInp.value = seed;
+        const model = q.get('model'); if (model) {
+          const map = { 'sdxl-base': 'SDXL Base', 'sdxl-refiner': 'SDXL Refiner', 'photoreal-xl': 'Photoreal XL', 'anime-xl': 'Anime XL' };
+          const label = map[model] || '';
+          if (label) {
+            for (const o of (document.getElementById('modelSelect') as HTMLSelectElement).options) {
+              if (o.text === label) { (document.getElementById('modelSelect') as HTMLSelectElement).value = label; break; }
+            }
+          }
+        }
+        const style = q.get('style'); if (style) {
+          for (const o of (document.getElementById('styleSelect') as HTMLSelectElement).options) {
+            if (o.text.toLowerCase() === style.toLowerCase()) { (document.getElementById('styleSelect') as HTMLSelectElement).value = o.text; break; }
+          }
+        }
+        updateMetaFromControls();
+      }catch(_){}
+    })();
+
     // Smooth scroll to result on "Generate"
     document.getElementById('btnGenerate')?.addEventListener('click', (e) => {
       e.preventDefault();

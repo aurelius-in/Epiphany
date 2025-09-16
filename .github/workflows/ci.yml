@@ -21,6 +21,20 @@ jobs:
       - run: pnpm install
       - run: pnpm build
 
+  web-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: epiphany/apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm i -g pnpm@9
+      - run: pnpm install
+      - run: pnpm build
+
   test-python:
     runs-on: ubuntu-latest
     steps:

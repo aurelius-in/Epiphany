@@ -9,6 +9,13 @@ type Generation = {
 	outputUrl?: string | null
 	previewUrls?: string[] | null
 	createdAt?: string
+	inputPrompt?: string
+	aspect?: string | null
+	steps?: number | null
+	cfg?: number | null
+	seed?: number | null
+	modelId?: string | null
+	stylePreset?: string | null
 }
 
 type ListRes = { items: Generation[], nextPage?: number }
@@ -38,6 +45,18 @@ export default function GalleryPage() {
 
 	useEffect(() => { load(1) }, [])
 
+	function recreateHref(g: Generation) {
+		const q = new URLSearchParams()
+		if (g.inputPrompt) q.set('prompt', g.inputPrompt)
+		if (g.aspect) q.set('aspect', g.aspect)
+		if (g.steps != null) q.set('steps', String(g.steps))
+		if (g.cfg != null) q.set('cfg', String(g.cfg))
+		if (g.seed != null) q.set('seed', String(g.seed))
+		if (g.modelId) q.set('model', g.modelId)
+		if (g.stylePreset) q.set('style', g.stylePreset)
+		return `/?${q.toString()}`
+	}
+
 	return (
 		<div style={{padding: 16}}>
 			<h1 style={{marginBottom: 12}}>Gallery</h1>
@@ -45,19 +64,20 @@ export default function GalleryPage() {
 			{error && <div style={{color:'tomato'}}>Error: {error}</div>}
 			<div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:12}}>
 				{items.map(it => (
-					<a key={it.id} href={it.outputUrl ?? '#'} target="_blank" rel="noreferrer" style={{textDecoration:'none', color:'#e6e6ea'}}>
-						<div style={{border:'1px solid #26262a', borderRadius:8, overflow:'hidden', background:'#101012'}}>
+					<div key={it.id} style={{border:'1px solid #26262a', borderRadius:8, overflow:'hidden', background:'#101012'}}>
+						<a href={it.outputUrl ?? '#'} target="_blank" rel="noreferrer" style={{textDecoration:'none', color:'#e6e6ea'}}>
 							{it.kind === 'image' && it.outputUrl && (
 								<img src={it.outputUrl} alt={it.id} style={{width:'100%', height:220, objectFit:'cover'}} />
 							)}
 							{it.kind === 'video' && it.outputUrl && (
 								<video src={it.outputUrl} style={{width:'100%', height:220, objectFit:'cover'}} controls />
 							)}
-							<div style={{padding:8, fontSize:12, color:'#a4a4ad'}}>
-								<div>{it.kind} • {it.status}</div>
-							</div>
+						</a>
+						<div style={{padding:8, fontSize:12, color:'#a4a4ad', display:'flex', justifyContent:'space-between', alignItems:'center', gap:8}}>
+							<div>{it.kind} • {it.status}</div>
+							<a href={recreateHref(it)} style={{color:'#cfd0ff'}}>Recreate</a>
 						</div>
-					</a>
+					</div>
 				))}
 			</div>
 			{nextPage && (
