@@ -9,7 +9,8 @@
     "build": "tsup src/index.ts --dts --format esm,cjs --splitting false",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
-    "prisma:migrate:deploy": "prisma migrate deploy"
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prepare": "prisma generate --schema=../../ops/prisma/schema.prisma"
   },
   "prisma": {
     "schema": "../../ops/prisma/schema.prisma"

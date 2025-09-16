@@ -3,7 +3,7 @@ import express from 'express'
 import cors from 'cors'
 import morgan from 'morgan'
 import { getEnv } from './env'
-import { requestId, apiKeyAuth } from './middleware'
+import { requestId, apiKeyAuth, tinyRateLimit } from './middleware'
 import { routes } from './routes'
 import { healthSummary } from './health'
 import { startWorkers } from './workers'
@@ -20,6 +20,7 @@ app.use((_, res, next) => {
 })
 
 app.use(requestId)
+app.use(tinyRateLimit())
 app.use(cors(env.WEB_ORIGIN ? { origin: env.WEB_ORIGIN } : undefined))
 app.use(express.json({ limit: '2mb' }))
 app.use(morgan('dev'))

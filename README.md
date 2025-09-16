@@ -67,11 +67,11 @@ Headers: `X-API-Key: <string>`, `Content-Type: application/json`
 - POST `/v1/enhance` → `{ prompt }` → `{ promptEnhanced, seedPhrases[] }`
 - POST `/v1/generate/image` → txt2img/img2img/inpaint/controlnet
 - POST `/v1/generate/video` → text→video, animate, stylize
-- POST `/v1/edit/*` → upscale, restore-face, remove-bg, crop, resize
-- GET  `/v1/jobs/:id` → `{ status, progress, outputUrl, previewUrls[], explainId }`
-- GET  `/v1/generations` → recent history
+- POST `/v1/edit/*` → upscale, restore-face, remove-bg, crop, resize, caption
+- GET  `/v1/jobs/:id` → `{ status, progress, outputUrl, previewUrls[], explainId, caption }`
+- GET  `/v1/generations` → recent history (paginated)
 - GET  `/v1/explain/:id` → token scores + heatmap URLs
-- GET  `/v1/health` → `{ ok, services:{db,redis,s3} }`
+- GET  `/v1/health` → `{ ok, services:{db,redis,s3,infer_image,infer_video,edit,explain} }`
 
 All request/response bodies are typed and validated with Zod (SDK included).
 
@@ -130,7 +130,7 @@ uvicorn main:app --host 0.0.0.0 --port 8004   # explain
 ```
 
 6) Web
-- Next.js app in `apps/web` serves the existing static UI via `public/index.html` and exposes a `/gallery` page.
+- Next.js app in `apps/web` serves the existing static UI via `public/index.html` and exposes `/gallery` and `/health` pages.
 
 7) Health
 ```
@@ -161,11 +161,11 @@ This flag propagates from API → workers → outputs and logs.
 
 ---
 
-## Deployment notes
-- GPU: ensure NVIDIA driver + nvidia‑container‑toolkit
-- Single‑box deploy: A10/A100 recommended; adjust compose resource limits
-- OOM fallback: workers auto‑reduce steps/resolution once and retry
-- Logs: minimal request/latency logging; OpenTelemetry hooks stubbed
+## Deployment
+- Ensure NVIDIA drivers and `nvidia-container-toolkit` installed on host
+- Set `WEB_ORIGIN=http://localhost:3000` (or your domain) for CORS
+- `make up` to build and start services; `make buckets` to create MinIO buckets
+- Run `ops/scripts/smoke.sh` or `ops/scripts/smoke.ps1` to verify end‑to‑end
 
 ---
 

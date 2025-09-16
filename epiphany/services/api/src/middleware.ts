@@ -14,3 +14,19 @@ export function apiKeyAuth(apiKey?: string) {
 		next()
 	}
 }
+
+const ipHits = new Map<string,{count:number,resetAt:number}>()
+export function tinyRateLimit(maxPerWindow = 120, windowMs = 60_000) {
+	return function(req: Request, res: Response, next: NextFunction) {
+		const ip = (req.ip || req.connection.remoteAddress || 'unknown') as string
+		const now = Date.now()
+		const cur = ipHits.get(ip)
+		if (!cur || now >= cur.resetAt) {
+			ipHits.set(ip, { count: 1, resetAt: now + windowMs })
+			return next()
+		}
+		if (cur.count >= maxPerWindow) return res.status(429).json({ error: 'rate_limited' })
+		cur.count++
+		next()
+	}
+}
