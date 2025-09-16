@@ -96,6 +96,8 @@ Headers: `X-API-Key: <string>`, `Content-Type: application/json`
 - GET  `/v1/uptime` → `{ startedAt, uptimeMs }`
 - GET  `/v1/queues` → BullMQ queue counts by state
 - GET  `/v1/_routes` → simple introspection of registered routes
+- GET  `/v1/stats/daily` → daily counts of generations/assets/events (last N days)
+- GET  `/v1/stats/daily.csv` → CSV of daily stats
 
 All request/response bodies are typed and validated with Zod (SDK included). SSE is supported for job progress.
 
