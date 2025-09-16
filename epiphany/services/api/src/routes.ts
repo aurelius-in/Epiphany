@@ -314,6 +314,22 @@ r.get('/events', async (req, res) => {
 	res.json({ items, nextPage })
 })
 
+r.get('/events.csv', async (req, res) => {
+	const generationId = req.query.generationId ? String(req.query.generationId) : undefined
+	const type = req.query.type ? String(req.query.type) : undefined
+	const limit = Math.max(1, Math.min(2000, parseInt(String(req.query.limit || '1000')) || 1000))
+	const where: any = {}
+	if (generationId) where.generationId = generationId
+	if (type) where.type = type
+	const items = await prisma.event.findMany({ where, orderBy: { createdAt: 'desc' }, take: limit })
+	const rows = [['id','generationId','type','payload','createdAt']]
+	for (const e of items) rows.push([e.id, e.generationId, e.type, JSON.stringify(e.payload || {}), e.createdAt.toISOString()])
+	const csv = rows.map(r => r.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n')
+	res.setHeader('Content-Type', 'text/csv')
+	res.setHeader('Content-Disposition', 'attachment; filename="events.csv"')
+	res.send(csv)
+})
+
 r.get('/event-types', async (_req, res) => {
 	const rows = await (prisma as any).$queryRawUnsafe(`SELECT DISTINCT "type" FROM "Event" ORDER BY 1`)
 	const types = Array.isArray(rows) ? rows.map((r: any) => r.type) : []
