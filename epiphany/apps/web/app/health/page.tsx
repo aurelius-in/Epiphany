@@ -62,6 +62,7 @@ export default function HealthPage() {
 					{retention && (
 						<div style={{marginTop:8, display:'flex', alignItems:'center', gap:8}}>
 							<div>Retention days: <strong>{retention.days ?? 'not set'}</strong></div>
+							<button onClick={async()=>{ try{ const p = await fetch('/api/proxy/v1/retention/preview').then(r=>r.json()); alert(`Preview: assets=${p.assets}, generations=${p.generations}`)}catch(e:any){ alert('Failed: '+e.message) } }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Preview</button>
 							<button onClick={async()=>{ try{ const r = await fetch('/api/proxy/v1/retention/run', { method:'POST' }); const j = await r.json(); alert(`Retention job ${j.id || ''} started`)}catch(e:any){ alert('Failed: '+e.message) } }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Run Retention</button>
 						</div>
 					)}

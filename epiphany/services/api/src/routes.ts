@@ -714,4 +714,19 @@ r.post('/retention/run', async (_req, res) => {
 	}
 })
 
+r.get('/retention/preview', async (_req, res) => {
+	try {
+		const { getEnv } = await import('./env')
+		const e = getEnv()
+		const days = e.RETENTION_DAYS || 0
+		if (!days) return res.json({ days: null, assets: 0, generations: 0 })
+		const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+		const assets = await prisma.asset.count({ where: { createdAt: { lt: cutoff } } as any })
+		const generations = await prisma.generation.count({ where: { createdAt: { lt: cutoff } } as any })
+		return res.json({ days, assets, generations })
+	} catch (e: any) {
+		return res.status(500).json({ error: String(e?.message || e) })
+	}
+})
+
 export const routes = r
