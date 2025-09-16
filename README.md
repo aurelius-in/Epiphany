@@ -82,6 +82,7 @@ Headers: `X-API-Key: <string>`, `Content-Type: application/json`
 - GET  `/v1/generations/:id/events` → events for a generation
 - GET  `/v1/explain/:id` → token scores + heatmap URLs
 - GET  `/v1/events` → recent events (filter by `generationId`)
+- GET  `/v1/events.csv` → CSV export (supports `?generationId` and `?type`)
 - GET  `/v1/event-types` → list distinct event types
 - GET  `/v1/errors` → failed generations
 - POST `/v1/retry/:id` → retry a failed generation

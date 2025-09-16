@@ -61,10 +61,11 @@ export default function HealthPage() {
 							Rate: limit={rate.limit} remaining={rate.remaining} windowMs={rate.window} resetMs={rate.reset} requestId={rate.requestId}
 						</div>
 					)}
-					<div style={{marginTop: 12}}>
+					<div style={{marginTop: 12, display:'flex', gap:12, flexWrap:'wrap'}}>
 						<a href="/api/proxy/v1/events" target="_blank" style={{color:'#cfd0ff'}}>Open Events JSON</a>
-						<span style={{marginLeft:12}}>|</span>
-						<a href="/api/proxy/v1/assets/export/csv" target="_blank" style={{marginLeft:12, color:'#cfd0ff'}}>Export Assets CSV</a>
+						<a href="/api/proxy/v1/events.csv" target="_blank" style={{color:'#cfd0ff'}}>Export Events CSV</a>
+						<a href="/api/proxy/v1/assets/export/csv" target="_blank" style={{color:'#cfd0ff'}}>Export Assets CSV</a>
+						<a href="/api/proxy/v1/stats/daily.csv" target="_blank" style={{color:'#cfd0ff'}}>Export Daily Stats CSV</a>
 					</div>
 				</div>
 			)}
