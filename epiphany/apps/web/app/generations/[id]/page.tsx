@@ -27,6 +27,8 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 	const [explain, setExplain] = useState<{ heatmapUrls?: string[], tokenScores?: any[] } | null>(null)
 	const [blur, setBlur] = useState(false)
 	const [showNsfw, setShowNsfw] = useState<boolean>(false)
+	const [overlayOpacity, setOverlayOpacity] = useState<number>(50)
+	const [selectedToken, setSelectedToken] = useState<string>('')
 	const id = params.id
 
 	useEffect(() => {
@@ -86,7 +88,7 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 						<div style={{position:'relative'}}>
 							<img src={gen.outputUrl} alt={gen.id} style={{width:'100%', height:'auto', filter: (blur || (!!gen.safety && (gen.safety as any).nsfw > 0 && !showNsfw)) ? 'blur(10px)' : 'none'}} />
 							{showExplain && explain?.heatmapUrls && explain.heatmapUrls[0] && (
-								<img src={explain.heatmapUrls[0]} alt="heatmap" style={{position:'absolute', inset:8, width:'calc(100% - 16px)', height:'auto', mixBlendMode:'screen', opacity:0.5, pointerEvents:'none'}} />
+								<img src={explain.heatmapUrls[0]} alt="heatmap" style={{position:'absolute', inset:8, width:'calc(100% - 16px)', height:'auto', mixBlendMode:'screen', opacity: Math.max(0, Math.min(100, overlayOpacity))/100, pointerEvents:'none'}} />
 							)}
 						</div>
 					)}
@@ -106,14 +108,30 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 						<li>Steps/CFG: {gen.steps ?? '-'} / {gen.cfg ?? '-'}</li>
 						<li>Seed: {gen.seed ?? '-'}</li>
 					</ul>
-					<div style={{display:'flex', gap:8, alignItems:'center'}}>
+					<div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
 						<label style={{display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color:'#a4a4ad'}}>
 							<input type="checkbox" checked={blur} onChange={e=>setBlur(e.target.checked)} /> Blur output
 						</label>
 						<label style={{display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color:'#a4a4ad'}}>
 							<input type="checkbox" checked={showNsfw} onChange={e=>setShowNsfw(e.target.checked)} /> Show NSFW unblurred
 						</label>
+						{showExplain && (
+							<div style={{display:'inline-flex', alignItems:'center', gap:6}}>
+								<span style={{fontSize:12, color:'#a4a4ad'}}>Overlay</span>
+								<input type="range" min={0} max={100} value={overlayOpacity} onChange={e=>setOverlayOpacity(parseInt(e.target.value||'0',10))} />
+							</div>
+						)}
 					</div>
+					{showExplain && Array.isArray(explain?.tokenScores) && explain!.tokenScores!.length > 0 && (
+						<div style={{marginTop:10}}>
+							<div style={{fontSize:12, color:'#a4a4ad', marginBottom:6}}>Prompt tokens:</div>
+							<div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
+								{explain!.tokenScores!.map((t: any, idx: number) => (
+									<button key={idx} onClick={()=>setSelectedToken(String(t.token))} style={{background: selectedToken===String(t.token)?'#2a2a34':'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'4px 8px', borderRadius:8}}>{String(t.token)}<span style={{marginLeft:6, color:'#7c7c86', fontSize:11}}>{Math.round((Number(t.score)||0)*100)/100}</span></button>
+								))}
+							</div>
+						</div>
+					)}
 					{gen.outputUrl && <div style={{marginTop:8, fontSize:12}}>Output URL: <a href={gen.outputUrl} target="_blank" style={{color:'#cfd0ff'}}>{gen.outputUrl}</a> <button onClick={()=>{ try{ navigator.clipboard.writeText(gen.outputUrl || '') }catch{} }} style={{marginLeft:8, fontSize:12}}>Copy</button></div>}
 				</div>
 			</div>

@@ -35,6 +35,18 @@ for i in {1..30}; do
   sleep 2
 done
 
+echo "Animate job (image->video)..."
+ANIM=$(curl -sSf -H "X-API-Key: $API_KEY" -H 'Content-Type: application/json' \
+  -d '{"prompt":"animate this","mode":0, "sourceImageUrl": "http://example.com/foo.png"}' \
+  "$API_BASE/v1/generate/video")
+ANIM_ID=$(echo "$ANIM" | jq -r .id)
+for i in {1..30}; do
+  ST=$(curl -sSf -H "X-API-Key: $API_KEY" "$API_BASE/v1/jobs/$ANIM_ID?signed=1")
+  echo "astatus=$(echo "$ST" | jq -r .status)"
+  if [[ "$(echo "$ST" | jq -r .outputUrl)" != "null" ]]; then break; fi
+  sleep 2
+done
+
 echo "Edit job (upscale)..."
 ED=$(curl -sSf -H "X-API-Key: $API_KEY" -H 'Content-Type: application/json' \
   -d "{\"imageUrl\": \"http://example.com/foo.png\", \"scale\": 2}" \
