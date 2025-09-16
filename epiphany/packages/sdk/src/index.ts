@@ -209,4 +209,9 @@ export async function getMetrics(baseUrl: string, apiKey: string) {
 	return z.object({ totals: z.object({ generations: z.number(), assets: z.number(), events: z.number(), explains: z.number() }), generationsByStatus: z.object({ succeeded: z.number(), failed: z.number(), queued: z.number() }) }).parse(j)
 }
 
+export async function getQueues(baseUrl: string, apiKey: string) {
+	const r = await fetch(`${baseUrl}/v1/queues`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
 export type { z } from 'zod'

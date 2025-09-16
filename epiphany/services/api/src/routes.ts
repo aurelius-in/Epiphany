@@ -373,4 +373,17 @@ r.post('/jobs/by-generation/:id/cancel', async (req, res) => {
 	res.json({ generationId, cancelled })
 })
 
+r.get('/queues', async (_req, res) => {
+	const out: any[] = []
+	for (const [name, q] of Object.entries(queues)) {
+		try {
+			const counts = await (q as any).getJobCounts('waiting','active','completed','failed','delayed','paused')
+			out.push({ name, counts })
+		} catch (e: any) {
+			out.push({ name, error: String(e?.message || e) })
+		}
+	}
+	res.json({ queues: out })
+})
+
 export const routes = r
