@@ -110,8 +110,9 @@ app.use('/v1', urlAllowlist())
 app.use('/v1', routes)
 
 app.use((err: any, req: any, res: any, _next: any) => {
-	const code = typeof err?.status === 'number' ? err.status : 500
-	res.status(code).json({ error: err?.message || 'internal_error', code, requestId: req?.id })
+	const isZod = !!(err?.issues && Array.isArray(err.issues))
+	const code = isZod ? 400 : (typeof err?.status === 'number' ? err.status : 500)
+	res.status(code).json({ error: err?.message || (isZod ? 'invalid_request' : 'internal_error'), code, requestId: req?.id, issues: isZod ? err.issues : undefined })
 })
 
 app.use((_req, res) => {
