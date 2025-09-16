@@ -271,6 +271,15 @@ r.get('/explain/:id', async (req, res) => {
 	return res.status(404).json({ error: 'not_found' })
 })
 
+r.post('/explain/:id/refresh', async (req, res) => {
+	const id = String(req.params.id)
+	let generationId = id
+	const ex = await prisma.explain.findUnique({ where: { id } }).catch(() => null)
+	if (ex) generationId = ex.generationId
+	const job = await queues.explain.add('explain', { generationId }, { removeOnComplete: true, removeOnFail: true })
+	res.json({ id: job.id, generationId })
+})
+
 r.get('/events', async (req, res) => {
 	const generationId = req.query.generationId ? String(req.query.generationId) : undefined
 	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)

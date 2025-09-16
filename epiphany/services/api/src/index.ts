@@ -20,7 +20,18 @@ app.use((_, res, next) => {
 })
 
 app.use(requestId)
-app.use(tinyRateLimit(env.RATE_LIMIT_MAX || 120, env.RATE_LIMIT_WINDOW_MS || 60_000))
+app.use((req, res, next) => {
+	const orig = tinyRateLimit(env.RATE_LIMIT_MAX || 120, env.RATE_LIMIT_WINDOW_MS || 60_000)
+	return orig(req as any, res as any, (err?: any) => {
+		try {
+			const ip = (req.ip || (req as any).connection?.remoteAddress || 'unknown') as string
+			const windowMs = env.RATE_LIMIT_WINDOW_MS || 60_000
+			;(res as any).setHeader('X-RateLimit-Limit', String(env.RATE_LIMIT_MAX || 120))
+			;(res as any).setHeader('X-RateLimit-Window', String(windowMs))
+		} catch {}
+		next(err)
+	})
+})
 app.use(cors(env.WEB_ORIGIN ? { origin: env.WEB_ORIGIN } : undefined))
 app.use(express.json({ limit: '2mb' }))
 

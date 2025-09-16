@@ -57,6 +57,7 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 			<div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
 				<h1>Generation {gen.id}</h1>
 				<div style={{display:'flex', gap:8}}>
+					<button onClick={async()=>{ try{ await fetch(`/api/proxy/v1/explain/${id}/refresh`, { method:'POST' }); location.reload() }catch{} }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Refresh Explain</button>
 					<button onClick={onCancel} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Cancel</button>
 					<button onClick={onDelete} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Delete</button>
 				</div>

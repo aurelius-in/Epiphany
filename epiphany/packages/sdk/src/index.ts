@@ -214,4 +214,9 @@ export async function getQueues(baseUrl: string, apiKey: string) {
 	return await r.json()
 }
 
+export async function refreshExplain(baseUrl: string, apiKey: string, id: string) {
+	const r = await fetch(`${baseUrl}/v1/explain/${id}/refresh`, { method: 'POST', headers: headers(apiKey) })
+	return await r.json()
+}
+
 export type { z } from 'zod'
