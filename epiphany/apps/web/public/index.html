@@ -713,6 +713,8 @@
 
       async function onGenerate(){
         try {
+          const unsafe = /(nsfw|nude|nudity|explicit|adult)/i.test(String(promptEl.value||''))
+          if (Number(modeRange.value||0) === 0 && unsafe) { showToast('Prompt not allowed in Safe mode', { type:'error' }); return }
           ensureEditButtons();
           resultBody.innerHTML = '<div class="result-placeholder">Generating…</div>';
           const initUrl = await uploadInitIfAny().catch(()=>null);
@@ -775,6 +777,8 @@
 
       async function onGenerateVideo(){
         try{
+          const unsafe = /(nsfw|nude|nudity|explicit|adult)/i.test(String(promptEl.value||''))
+          if (Number(modeRange.value||0) === 0 && unsafe) { showToast('Prompt not allowed in Safe mode', { type:'error' }); return }
           resultBody.innerHTML = '<div class="result-placeholder">Generating video…</div>';
           const initUrl = await uploadInitIfAny().catch(()=>null);
           const sourceUrl = await uploadVideoSourceIfAny(initUrl).catch(()=>null);

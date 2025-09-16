@@ -14,6 +14,8 @@ type Generation = {
 	cfg?: number | null
 	seed?: number | null
 	safety?: any | null
+	durationMs?: number | null
+	modelHash?: string | null
 }
 
 type EventsRes = { items: Array<{ id: string, type: string, payload: any, createdAt: string }>, nextPage?: number }
@@ -105,8 +107,10 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 						<li>Status: {gen.status}</li>
 						<li>Prompt: {gen.inputPrompt} <button onClick={()=>{ try{ navigator.clipboard.writeText(gen.inputPrompt || '') }catch{} }} style={{marginLeft:8, fontSize:12}}>Copy</button></li>
 						<li>Model: {gen.modelId}</li>
+						<li>Model Hash: {gen.modelHash ?? '-'} {gen.modelHash && (<button onClick={()=>{ try{ navigator.clipboard.writeText(gen.modelHash || '') }catch{} }} style={{marginLeft:8, fontSize:12}}>Copy</button>)}</li>
 						<li>Steps/CFG: {gen.steps ?? '-'} / {gen.cfg ?? '-'}</li>
 						<li>Seed: {gen.seed ?? '-'}</li>
+						<li>Duration: {gen.durationMs != null ? `${Math.round((gen.durationMs||0)/10)/100}s` : '-'}</li>
 						<li>Safety: {gen.safety && (typeof (gen.safety as any).nsfw === 'number') ? `nsfw=${(gen.safety as any).nsfw}` : 'n/a'}</li>
 					</ul>
 					<div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
