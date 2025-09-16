@@ -3,7 +3,7 @@ import { getEnv } from './env'
 
 const env = getEnv()
 
-const s3 = new AWS.S3({
+const s3 = new (AWS.S3 as any)({
 	endpoint: env.S3_ENDPOINT,
 	s3ForcePathStyle: true,
 	accessKeyId: env.S3_ACCESS_KEY,
@@ -13,7 +13,11 @@ const s3 = new AWS.S3({
 }) as AWS.S3
 
 export async function putObject(key: string, body: Buffer, contentType?: string): Promise<string> {
-	await s3.putObject({ Bucket: env.S3_BUCKET!, Key: key, Body: body, ContentType: contentType }).promise()
+	await (s3 as any).putObject({ Bucket: env.S3_BUCKET!, Key: key, Body: body, ContentType: contentType }).promise()
 	const endpoint = env.S3_ENDPOINT?.replace('http://', '').replace('https://','')
 	return `http://${endpoint}/${env.S3_BUCKET}/${key}`
+}
+
+export function getSignedUrl(key: string, expiresSeconds = 3600): string {
+	return (s3 as any).getSignedUrl('getObject', { Bucket: env.S3_BUCKET!, Key: key, Expires: expiresSeconds })
 }

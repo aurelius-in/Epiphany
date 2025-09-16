@@ -14,15 +14,18 @@ function selectImageEndpoint(data: any): string {
 }
 
 async function processGenerateImage(job: Job) {
+	const t0 = Date.now()
 	try {
 		await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'running' } })
 		await job.updateProgress(10)
 		const url = selectImageEndpoint(job.data)
 		const resp = await postJson<any>(url, job.data)
 		await job.updateProgress(90)
+		const durationMs = resp.duration_ms || (Date.now() - t0)
 		await prisma.generation.update({ where: { id: job.data.generationId }, data: {
-			status: 'succeeded', outputUrl: resp.output_url || null, previewUrls: resp.preview_urls || [], durationMs: resp.duration_ms || null, modelHash: resp.model_hash || null, safety: resp.safety_scores || null,
+			status: 'succeeded', outputUrl: resp.output_url || null, previewUrls: resp.preview_urls || [], durationMs, modelHash: resp.model_hash || null, safety: resp.safety_scores || null,
 		} })
+		await prisma.event.create({ data: { generationId: job.data.generationId, type: 'succeeded', payload: { jobId: job.id, durationMs } as any } })
 		if (resp.output_url) {
 			await prisma.asset.create({ data: { url: resp.output_url, kind: 'image', mime: 'image/png' } })
 		}
@@ -31,17 +34,21 @@ async function processGenerateImage(job: Job) {
 		return { ...resp, explain_id: ex.id }
 	} catch (err: any) {
 		await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'failed', error: String(err?.message || err) } })
+		await prisma.event.create({ data: { generationId: job.data.generationId, type: 'failed', payload: { jobId: job.id, error: String(err?.message || err) } as any } })
 		throw err
 	}
 }
 
 async function processGenerateVideo(job: Job) {
+	const t0 = Date.now()
 	try {
 		await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'running' } })
 		await job.updateProgress(10)
 		const resp = await postJson<any>('http://localhost:8002/infer/t2v', job.data)
 		await job.updateProgress(90)
-		await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'succeeded', outputUrl: resp.output_url || null, durationMs: resp.duration_ms || null, modelHash: resp.model_hash || null } })
+		const durationMs = resp.duration_ms || (Date.now() - t0)
+		await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'succeeded', outputUrl: resp.output_url || null, durationMs, modelHash: resp.model_hash || null } })
+		await prisma.event.create({ data: { generationId: job.data.generationId, type: 'succeeded', payload: { jobId: job.id, durationMs } as any } })
 		if (resp.output_url) {
 			await prisma.asset.create({ data: { url: resp.output_url, kind: 'video', mime: 'video/mp4' } })
 		}
@@ -49,6 +56,7 @@ async function processGenerateVideo(job: Job) {
 		return resp
 	} catch (err: any) {
 		await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'failed', error: String(err?.message || err) } })
+		await prisma.event.create({ data: { generationId: job.data.generationId, type: 'failed', payload: { jobId: job.id, error: String(err?.message || err) } as any } })
 		throw err
 	}
 }
