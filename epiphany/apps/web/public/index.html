@@ -145,6 +145,23 @@
         </div>
       </div>
 
+      <div class="card" style="margin-top:8px;padding:8px">
+        <div style="display:flex;align-items:center;gap:10px;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <input id="cnEnable" type="checkbox" />
+            <label for="cnEnable" class="field-label" style="margin:0">ControlNet</label>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <label class="field-label" for="cnType" style="margin:0">Type</label>
+            <select id="cnType" class="select"><option value="canny">Canny</option><option value="depth">Depth</option><option value="pose">Pose</option></select>
+            <label class="field-label" for="cnStrength" style="margin:0">Strength</label>
+            <input id="cnStrength" type="range" min="0" max="1" step="0.05" value="1" />
+            <span id="cnStrengthVal" style="font-size:12px;color:#a4a4ad;width:28px;text-align:right">1.0</span>
+          </div>
+        </div>
+        <div style="color:#a4a4ad;font-size:12px;margin-top:6px">Uses Init Image as the control image when enabled.</div>
+      </div>
+
       <div class="grid-3">
         <div>
           <label class="field-label" for="initFile">Init Image (optional)</label>
@@ -159,6 +176,11 @@
           <div id="maskPreviewWrap" style="margin-top:6px;display:flex;gap:6px;align-items:center">
             <img id="maskPreview" alt="Mask preview" style="width:72px;height:72px;object-fit:cover;border:1px solid #26262a;border-radius:6px;display:none" />
           </div>
+        </div>
+        <div>
+          <label class="field-label" for="i2iStrength">Img2Img Strength</label>
+          <input id="i2iStrength" type="range" min="0.05" max="0.99" step="0.01" value="0.60" />
+          <div style="font-size:12px;color:#a4a4ad">Strength: <span id="i2iStrengthVal">0.60</span></div>
         </div>
       </div>
 
@@ -339,6 +361,10 @@
     const stepsInp = document.getElementById('stepsInput');
     const cfgInp   = document.getElementById('cfgInput');
     const seedInp  = document.getElementById('seedInput');
+    const cnEnable = document.getElementById('cnEnable');
+    const cnType   = document.getElementById('cnType');
+    const cnStrength = document.getElementById('cnStrength');
+    const cnStrengthVal = document.getElementById('cnStrengthVal');
 
     function setMode(v){
       const n = Math.max(0, Math.min(2, parseInt(v,10) || 0));
@@ -358,6 +384,14 @@
     modeRange.addEventListener('input', e => setMode(e.target.value));
     modeBtns.forEach(b => b.addEventListener('click', () => setMode(b.dataset.set)));
     [arSelect, stepsInp, cfgInp, seedInp].forEach(el => el.addEventListener('input', updateMetaFromControls));
+    cnStrength?.addEventListener('input', () => { if (cnStrengthVal) cnStrengthVal.textContent = Number(cnStrength.value).toFixed(2) });
+    function syncCnDisabled(){
+      const on = !!(cnEnable && cnEnable.checked);
+      if (cnType) cnType.disabled = !on;
+      if (cnStrength) cnStrength.disabled = !on;
+    }
+    cnEnable?.addEventListener('change', syncCnDisabled);
+    syncCnDisabled();
 
     // Initial meta fill
     setMode(modeRange.value);
@@ -445,6 +479,8 @@
       const resultMeta = document.getElementById('resultMeta');
       const historyList = document.querySelector('.history-list');
       const captionChip = document.getElementById('metaCaption');
+      const i2iStrength = document.getElementById('i2iStrength');
+      const i2iStrengthVal = document.getElementById('i2iStrengthVal');
 
       function headers() {
         return { 'Content-Type': 'application/json', 'X-API-Key': API_KEY };
@@ -609,12 +645,24 @@
         });
       }
 
+      function syncI2iDisabled(){
+        const hasInit = !!(initFile && initFile.files && initFile.files[0]);
+        if (i2iStrength) i2iStrength.disabled = !hasInit;
+      }
+      initFile?.addEventListener('change', () => { syncI2iDisabled(); if (i2iStrengthVal && i2iStrength) i2iStrengthVal.textContent = Number(i2iStrength.value).toFixed(2) });
+      i2iStrength?.addEventListener('input', () => { if (i2iStrengthVal) i2iStrengthVal.textContent = Number(i2iStrength.value).toFixed(2) });
+      syncI2iDisabled();
+
       async function onGenerate(){
         try {
           ensureEditButtons();
           resultBody.innerHTML = '<div class="result-placeholder">Generating…</div>';
           const initUrl = await uploadInitIfAny().catch(()=>null);
           const maskUrl = await uploadMaskIfAny().catch(()=>null);
+          let controlnet = undefined;
+          if (cnEnable && cnEnable.checked) {
+            controlnet = { type: (cnType && cnType.value) || 'canny', strength: cnStrength ? Number(cnStrength.value) : 1, imageUrl: initUrl || undefined };
+          }
           const body = {
             prompt: String(promptEl.value || '').slice(0,2000),
             mode: Number(modeRange.value || 0),
@@ -627,6 +675,8 @@
             preview: false,
             initImageUrl: initUrl || undefined,
             maskUrl: maskUrl || undefined,
+            controlnet,
+            strength: (!controlnet && initUrl && i2iStrength) ? Number(i2iStrength.value) : undefined,
           };
           const j = await postJson(`${API_BASE}/v1/generate/image`, body);
           window.lastJobId = j.id;

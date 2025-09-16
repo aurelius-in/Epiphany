@@ -179,6 +179,88 @@ def try_inpaint_with_diffusers(prompt: str, init_bytes: bytes | None, mask_bytes
     except Exception:
         return None
 
+def try_controlnet_canny_with_diffusers(prompt: str, ctrl_bytes: bytes | None, strength: float, steps: int, cfg: float, width: int, height: int) -> BytesIO | None:
+	if not _diffusers_available or not ctrl_bytes:
+		return None
+	try:
+		from diffusers import ControlNetModel, StableDiffusionXLControlNetPipeline
+		import torch
+		from PIL import Image as PILImage
+		import cv2  # type: ignore
+		import numpy as np
+		device = 'cuda' if torch.cuda.is_available() else 'cpu'
+		# Prepare canny edge image
+		im = PILImage.open(BytesIO(ctrl_bytes)).convert('RGB').resize((width, height))
+		arr = np.array(im)
+		edges = cv2.Canny(arr, 100, 200)
+		edges_rgb = np.stack([edges, edges, edges], axis=-1)
+		edges_im = PILImage.fromarray(edges_rgb)
+		# Load ControlNet and pipeline
+		cn = ControlNetModel.from_pretrained(os.getenv('SDXL_CN_CANNY_MODEL', 'lllyasviel/sd-controlnet-canny'))
+		pipe = StableDiffusionXLControlNetPipeline.from_pretrained(os.getenv('SDXL_MODEL', 'stabilityai/stable-diffusion-xl-base-1.0'), controlnet=cn)
+		if device == 'cuda':
+			pipe = pipe.to(device)
+		g = pipe(prompt=prompt, image=edges_im, controlnet_conditioning_scale=max(0.0, min(strength, 2.0)), num_inference_steps=max(1, min(steps, 30)), guidance_scale=max(1.0, min(cfg, 12.0)), height=height, width=width)
+		out = g.images[0]
+		buf = BytesIO(); out.save(buf, format='PNG'); return buf
+	except Exception:
+		return None
+
+def try_controlnet_depth_with_diffusers(prompt: str, ctrl_bytes: bytes | None, strength: float, steps: int, cfg: float, width: int, height: int) -> BytesIO | None:
+	if not _diffusers_available or not ctrl_bytes:
+		return None
+	try:
+		from diffusers import ControlNetModel, StableDiffusionXLControlNetPipeline
+		import torch
+		from PIL import Image as PILImage
+		import numpy as np
+		# Build depth map via controlnet_aux if available
+		try:
+			from controlnet_aux import MidasDetector  # type: ignore
+			midas = MidasDetector.from_pretrained('intel-isl/MiDaS')
+			im = PILImage.open(BytesIO(ctrl_bytes)).convert('RGB').resize((width, height))
+			depth_im = midas(im)
+		except Exception:
+			# fallback: grayscale as pseudo depth
+			im = PILImage.open(BytesIO(ctrl_bytes)).convert('L').resize((width, height))
+			depth_im = im.convert('RGB')
+		device = 'cuda' if torch.cuda.is_available() else 'cpu'
+		cn = ControlNetModel.from_pretrained(os.getenv('SDXL_CN_DEPTH_MODEL', 'lllyasviel/sd-controlnet-depth'))
+		pipe = StableDiffusionXLControlNetPipeline.from_pretrained(os.getenv('SDXL_MODEL', 'stabilityai/stable-diffusion-xl-base-1.0'), controlnet=cn)
+		if device == 'cuda':
+			pipe = pipe.to(device)
+		g = pipe(prompt=prompt, image=depth_im, controlnet_conditioning_scale=max(0.0, min(strength, 2.0)), num_inference_steps=max(1, min(steps, 30)), guidance_scale=max(1.0, min(cfg, 12.0)), height=height, width=width)
+		out = g.images[0]
+		buf = BytesIO(); out.save(buf, format='PNG'); return buf
+	except Exception:
+		return None
+
+def try_controlnet_pose_with_diffusers(prompt: str, ctrl_bytes: bytes | None, strength: float, steps: int, cfg: float, width: int, height: int) -> BytesIO | None:
+	if not _diffusers_available or not ctrl_bytes:
+		return None
+	try:
+		from diffusers import ControlNetModel, StableDiffusionXLControlNetPipeline
+		import torch
+		from PIL import Image as PILImage
+		# Build openpose annotation via controlnet_aux if available
+		try:
+			from controlnet_aux import OpenposeDetector  # type: ignore
+			op = OpenposeDetector.from_pretrained('lllyasviel/ControlNet')
+			pose_im = op(PILImage.open(BytesIO(ctrl_bytes)).convert('RGB').resize((width, height)))
+		except Exception:
+			# fallback: use the original image
+			pose_im = PILImage.open(BytesIO(ctrl_bytes)).convert('RGB').resize((width, height))
+		device = 'cuda' if torch.cuda.is_available() else 'cpu'
+		cn = ControlNetModel.from_pretrained(os.getenv('SDXL_CN_POSE_MODEL', 'lllyasviel/sd-controlnet-openpose'))
+		pipe = StableDiffusionXLControlNetPipeline.from_pretrained(os.getenv('SDXL_MODEL', 'stabilityai/stable-diffusion-xl-base-1.0'), controlnet=cn)
+		if device == 'cuda':
+			pipe = pipe.to(device)
+		g = pipe(prompt=prompt, image=pose_im, controlnet_conditioning_scale=max(0.0, min(strength, 2.0)), num_inference_steps=max(1, min(steps, 30)), guidance_scale=max(1.0, min(cfg, 12.0)), height=height, width=width)
+		out = g.images[0]
+		buf = BytesIO(); out.save(buf, format='PNG'); return buf
+	except Exception:
+		return None
+
 def fetch_bytes(url: str) -> bytes | None:
     try:
         if not is_allowed_url(url):
@@ -315,6 +397,18 @@ async def controlnet(request: Request):
 		try:
 			# will return None if unavailable
 			buf = try_controlnet_canny_with_diffusers(prompt, ctrl_bytes, float((ctrl or {}).get('strength') or 1.0), int(body.get('steps', 20) or 20), float(body.get('cfg', 7.0) or 7.0), w, h)
+		except Exception:
+			buf = None
+	elif ctype == 'depth':
+		ctrl_bytes = fetch_bytes(ctrl_img_url or '')
+		try:
+			buf = try_controlnet_depth_with_diffusers(prompt, ctrl_bytes, float((ctrl or {}).get('strength') or 1.0), int(body.get('steps', 20) or 20), float(body.get('cfg', 7.0) or 7.0), w, h)
+		except Exception:
+			buf = None
+	elif ctype == 'pose':
+		ctrl_bytes = fetch_bytes(ctrl_img_url or '')
+		try:
+			buf = try_controlnet_pose_with_diffusers(prompt, ctrl_bytes, float((ctrl or {}).get('strength') or 1.0), int(body.get('steps', 20) or 20), float(body.get('cfg', 7.0) or 7.0), w, h)
 		except Exception:
 			buf = None
 	# Fallback placeholder
