@@ -1,13 +1,23 @@
-import { Queue, QueueEvents, Worker } from 'bullmq'
+import { Queue, QueueEvents, Worker, QueueOptions } from 'bullmq'
 import IORedis from 'ioredis'
 
-const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379')
+export const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379')
+
+const queueOpts: QueueOptions = {
+	connection,
+	defaultJobOptions: {
+		attempts: 2,
+		backoff: { type: 'exponential', delay: 2000 },
+		removeOnComplete: true,
+		removeOnFail: false,
+	},
+}
 
 export const queues = {
-	generate_image: new Queue('generate_image', { connection }),
-	generate_video: new Queue('generate_video', { connection }),
-	edit_image: new Queue('edit_image', { connection }),
-	explain: new Queue('explain', { connection }),
+	generate_image: new Queue('generate_image', queueOpts),
+	generate_video: new Queue('generate_video', queueOpts),
+	edit_image: new Queue('edit_image', queueOpts),
+	explain: new Queue('explain', queueOpts),
 }
 
 export function queueEvents() {

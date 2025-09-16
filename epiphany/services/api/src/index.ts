@@ -3,7 +3,7 @@ import express from 'express'
 import cors from 'cors'
 import morgan from 'morgan'
 import { getEnv } from './env'
-import { requestId, apiKeyAuth, tinyRateLimit } from './middleware'
+import { requestId, apiKeyAuth, tinyRateLimit, urlAllowlist } from './middleware'
 import { routes } from './routes'
 import { healthSummary } from './health'
 import { startWorkers } from './workers'
@@ -37,11 +37,12 @@ app.post('/v1/enhance', (req, res) => {
 	res.json({ promptEnhanced: prompt || 'a detailed high-quality image', seedPhrases })
 })
 
+app.use('/v1', urlAllowlist())
 app.use('/v1', routes)
 
-app.use((err: any, _req: any, res: any, _next: any) => {
+app.use((err: any, req: any, res: any, _next: any) => {
 	const code = typeof err?.status === 'number' ? err.status : 500
-	res.status(code).json({ error: err?.message || 'internal_error' })
+	res.status(code).json({ error: err?.message || 'internal_error', code, requestId: req?.id })
 })
 
 startWorkers()

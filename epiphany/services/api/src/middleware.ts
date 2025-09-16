@@ -30,3 +30,23 @@ export function tinyRateLimit(maxPerWindow = 120, windowMs = 60_000) {
 		next()
 	}
 }
+
+export function urlAllowlist(prefixesCsv?: string) {
+	const prefixes = (prefixesCsv || process.env.ALLOWED_URL_PREFIXES || '')
+		.split(',').map(s => s.trim()).filter(Boolean)
+	return function(req: Request, res: Response, next: NextFunction) {
+		if (prefixes.length === 0) return next()
+		const urls: string[] = []
+		const body: any = req.body || {}
+		if (body.initImageUrl) urls.push(String(body.initImageUrl))
+		if (body.maskUrl) urls.push(String(body.maskUrl))
+		if (body.controlnet?.imageUrl) urls.push(String(body.controlnet.imageUrl))
+		if (body.imageUrl) urls.push(String(body.imageUrl))
+		for (const u of urls) {
+			if (!prefixes.some(p => u.startsWith(p))) {
+				return res.status(400).json({ error: 'url_not_allowed' })
+			}
+		}
+		next()
+	}
+}
