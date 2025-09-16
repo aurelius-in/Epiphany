@@ -151,6 +151,33 @@ r.get('/jobs/:id', async (req, res) => {
 	res.json({ id, status: statusMap[state] || state, progress, outputUrl: result?.output_url, previewUrls: result?.preview_urls, explainId: result?.explain_id, caption: result?.caption, error: failedReason })
 })
 
+r.get('/jobs/:id/stream', async (req, res) => {
+	res.setHeader('Content-Type', 'text/event-stream')
+	res.setHeader('Cache-Control', 'no-cache')
+	res.setHeader('Connection', 'keep-alive')
+	const id = String(req.params.id)
+	function send(event: any) {
+		res.write(`data: ${JSON.stringify(event)}\n\n`)
+	}
+	let closed = false
+	req.on('close', () => { closed = true })
+	const interval = setInterval(async () => {
+		if (closed) { clearInterval(interval); return }
+		const statusOf = async (qname: keyof typeof queues) => queues[qname].getJob(id)
+		const job = (await statusOf('generate_image')) || (await statusOf('generate_video')) || (await statusOf('edit_image')) || (await statusOf('explain'))
+		if (!job) { send({ id, status: 'not_found' }); clearInterval(interval); res.end(); return }
+		const state = await job.getState()
+		const progress = (job.progress as any) || 0
+		send({ id, state, progress })
+		if (state === 'completed' || state === 'failed') {
+			const result = (await job.getReturnValue().catch(() => null)) as any
+			send({ id, done: true, state, result })
+			clearInterval(interval)
+			res.end()
+		}
+	}, 700)
+})
+
 r.post('/jobs/:id/cancel', async (req, res) => {
 	const id = String(req.params.id)
 	const found: Job[] = []
