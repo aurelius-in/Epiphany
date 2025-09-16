@@ -358,4 +358,14 @@ export async function drainQueue(baseUrl: string, apiKey: string, name: string) 
 	return await r.json()
 }
 
+export async function getRetentionConfig(baseUrl: string, apiKey: string) {
+	const r = await fetch(`${baseUrl}/v1/retention/config`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function runRetention(baseUrl: string, apiKey: string) {
+	const r = await fetch(`${baseUrl}/v1/retention/run`, { method: 'POST', headers: headers(apiKey) })
+	return await r.json()
+}
+
 export type { z } from 'zod'

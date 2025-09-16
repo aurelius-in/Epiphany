@@ -12,6 +12,7 @@ export default function HealthPage() {
 	const [version, setVersion] = useState<any>(null)
 	const [config, setConfig] = useState<any>(null)
 	const [rate, setRate] = useState<RateInfo>({})
+	const [retention, setRetention] = useState<any>(null)
 
 	useEffect(() => {
 		const run = async () => {
@@ -30,6 +31,8 @@ export default function HealthPage() {
 				setVersion(await v.json())
 				const c = await fetch(`/api/proxy/v1/config`)
 				setConfig(await c.json())
+				const r = await fetch(`/api/proxy/v1/retention/config`)
+				setRetention(await r.json())
 			} catch (e: any) {
 				setError(e.message)
 			}
@@ -55,6 +58,12 @@ export default function HealthPage() {
 					)}
 					{config && (
 						<pre style={{marginTop:8, background:'#0b0b0d', padding:12, border:'1px solid #26262a', borderRadius:8}}>{JSON.stringify(config, null, 2)}</pre>
+					)}
+					{retention && (
+						<div style={{marginTop:8, display:'flex', alignItems:'center', gap:8}}>
+							<div>Retention days: <strong>{retention.days ?? 'not set'}</strong></div>
+							<button onClick={async()=>{ try{ const r = await fetch('/api/proxy/v1/retention/run', { method:'POST' }); const j = await r.json(); alert(`Retention job ${j.id || ''} started`)}catch(e:any){ alert('Failed: '+e.message) } }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Run Retention</button>
+						</div>
 					)}
 					{(rate.limit || rate.remaining) && (
 						<div style={{marginTop:8, fontSize:12, color:'#a4a4ad'}}>
