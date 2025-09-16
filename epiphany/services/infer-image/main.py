@@ -113,6 +113,7 @@ async def txt2img(request: Request):
 	cfg = float(body.get('cfg', 7.0))
 	aspect = body.get('aspect')
 	preview = bool(body.get('preview', False))
+	mode = int(body.get('mode', 1))
 	w, h = choose_dims(aspect, preview)
 	attempt = 0
 	while True:
@@ -128,44 +129,78 @@ async def txt2img(request: Request):
 	key = f"gen/txt2img_{random.randint(0, 1_000_000)}.png"
 	url = upload_png(key, buf)
 	meta = image_meta(buf, w, h)
-	return {"output_url": url, "preview_urls": [], "model_hash": MODEL_ID, "duration_ms": 1, "safety_scores": simple_safety_from_prompt(prompt), "image_meta": meta, "echo": {"prompt": prompt, "steps": steps, "cfg": cfg}}
+	safety = simple_safety_from_prompt(prompt)
+	previews = []
+	if mode != 2 and safety.get('nsfw', 0) > 0:
+		red = make_image(64, 64, color=(64, 64, 64))
+		pkey = f"gen/redacted_{random.randint(0, 1_000_000)}.png"
+		purl = upload_png(pkey, red)
+		previews = [purl]
+	return {"output_url": url, "preview_urls": previews, "model_hash": MODEL_ID, "duration_ms": 1, "safety_scores": safety, "image_meta": meta, "echo": {"prompt": prompt, "steps": steps, "cfg": cfg}}
 
 @app.post('/infer/img2img')
 async def img2img(request: Request):
 	body = await request.json()
+	prompt = body.get('prompt', '')
 	init_url = body.get('initImageUrl')
 	aspect = body.get('aspect')
 	preview = bool(body.get('preview', False))
+	mode = int(body.get('mode', 1))
 	w, h = choose_dims(aspect, preview)
 	buf = make_image(w, h, color=(10, 10, 10))
 	key = f"gen/img2img_{random.randint(0, 1_000_000)}.png"
 	url = upload_png(key, buf)
 	meta = image_meta(buf, w, h)
-	return {"output_url": url, "preview_urls": [], "image_meta": meta, "echo": {"initImageUrl": init_url}}
+	safety = simple_safety_from_prompt(prompt)
+	previews = []
+	if mode != 2 and safety.get('nsfw', 0) > 0:
+		red = make_image(64, 64, color=(64, 64, 64))
+		pkey = f"gen/redacted_{random.randint(0, 1_000_000)}.png"
+		purl = upload_png(pkey, red)
+		previews = [purl]
+	return {"output_url": url, "preview_urls": previews, "safety_scores": safety, "image_meta": meta, "echo": {"initImageUrl": init_url}}
 
 @app.post('/infer/inpaint')
 async def inpaint(request: Request):
 	body = await request.json()
+	prompt = body.get('prompt', '')
 	mask_url = body.get('maskUrl')
 	aspect = body.get('aspect')
 	preview = bool(body.get('preview', False))
+	mode = int(body.get('mode', 1))
 	w, h = choose_dims(aspect, preview)
 	buf = make_image(w, h, color=(20, 20, 20))
 	key = f"gen/inpaint_{random.randint(0, 1_000_000)}.png"
 	url = upload_png(key, buf)
 	meta = image_meta(buf, w, h)
-	return {"output_url": url, "preview_urls": [], "image_meta": meta, "echo": {"maskUrl": mask_url}}
+	safety = simple_safety_from_prompt(prompt)
+	previews = []
+	if mode != 2 and safety.get('nsfw', 0) > 0:
+		red = make_image(64, 64, color=(64, 64, 64))
+		pkey = f"gen/redacted_{random.randint(0, 1_000_000)}.png"
+		purl = upload_png(pkey, red)
+		previews = [purl]
+	return {"output_url": url, "preview_urls": previews, "safety_scores": safety, "image_meta": meta, "echo": {"maskUrl": mask_url}}
 
 @app.post('/infer/controlnet')
 async def controlnet(request: Request):
 	body = await request.json()
+	prompt = body.get('prompt', '')
 	ctrl = body.get('controlnet', {})
 	ctype = ctrl.get('type')
 	aspect = body.get('aspect')
 	preview = bool(body.get('preview', False))
+	mode = int(body.get('mode', 1))
 	w, h = choose_dims(aspect, preview)
 	buf = make_image(w, h, color=(30, 30, 30))
 	key = f"gen/controlnet_{ctype or 'none'}_{random.randint(0, 1_000_000)}.png"
 	url = upload_png(key, buf)
 	meta = image_meta(buf, w, h)
-	return {"output_url": url, "preview_urls": [], "image_meta": meta, "echo": {"controlnet": ctrl}}
+	safety = simple_safety_from_prompt(prompt)
+	previews = []
+	if mode != 2 and safety.get('nsfw', 0) > 0:
+		red = make_image(64, 64, color=(64, 64, 64))
+		pkey = f"gen/redacted_{random.randint(0, 1_000_000)}.png"
+		purl = upload_png(pkey, red)
+		previews = [purl]
+	return {"output_url": url, "preview_urls": previews, "safety_scores": safety, "image_meta": meta, "echo": {"controlnet": ctrl}}
