@@ -69,6 +69,17 @@ app.post('/v1/enhance', (req, res) => {
 })
 
 app.get('/v1/ping', (_req, res) => res.json({ pong: true }))
+app.get('/v1/system', async (_req, res) => {
+	const health = await healthSummary(env)
+	const version = { name: 'epiphany', version: process.env.npm_package_version || '0.1.0' }
+	const config = {
+		webOrigin: env.WEB_ORIGIN || null,
+		allowNswf: !!env.ALLOW_NSWF,
+		rateLimit: { max: env.RATE_LIMIT_MAX || 120, windowMs: env.RATE_LIMIT_WINDOW_MS || 60_000 },
+		s3: { endpoint: env.S3_ENDPOINT || null, region: env.S3_REGION || null, bucket: env.S3_BUCKET || null, inputsBucket: env.S3_INPUTS_BUCKET || env.S3_BUCKET || null },
+	}
+	res.json({ health, version, config })
+})
 
 app.use('/v1', urlAllowlist())
 app.use('/v1', routes)
