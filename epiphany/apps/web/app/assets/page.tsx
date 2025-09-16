@@ -49,11 +49,16 @@ export default function AssetsPage() {
 			<div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))', gap:10}}>
 				{items.map(a => (
 					<div key={a.id} style={{border:'1px solid #26262a', borderRadius:8, overflow:'hidden', background:'#101012'}}>
-						{a.kind === 'image' ? (
-							<img src={a.url} alt={a.id} style={{width:'100%', height:180, objectFit:'cover'}} />
-						) : (
-							<video src={a.url} style={{width:'100%', height:180, objectFit:'cover'}} controls />
-						)}
+						<div style={{position:'relative'}}>
+							{a.kind === 'image' ? (
+								<img src={a.url} alt={a.id} style={{width:'100%', height:180, objectFit:'cover'}} />
+							) : (
+								<video src={a.url} style={{width:'100%', height:180, objectFit:'cover'}} controls />
+							)}
+							<div style={{position:'absolute', bottom:6, right:6, background:'rgba(0,0,0,0.55)', padding:'4px 6px', borderRadius:6, fontSize:11, color:'#e6e6ea'}}>
+								{a.width && a.height ? `${a.width}×${a.height}` : ''} {a.bytes ? `• ${(a.bytes/1024).toFixed(1)} KB` : ''}
+							</div>
+						</div>
 						<div style={{padding:8, fontSize:12, color:'#a4a4ad', display:'flex', justifyContent:'space-between', alignItems:'center', gap:8}}>
 							<div>{a.kind} • {a.mime}</div>
 							<div style={{display:'flex', gap:8}}>
