@@ -2,6 +2,7 @@
 import express from 'express'
 import cors from 'cors'
 import morgan from 'morgan'
+import compression from 'compression'
 import { getEnv } from './env'
 import { requestId, apiKeyAuth, tinyRateLimit, urlAllowlist } from './middleware'
 import { routes } from './routes'
@@ -34,6 +35,7 @@ app.use((req, res, next) => {
 })
 app.use(cors(env.WEB_ORIGIN ? { origin: env.WEB_ORIGIN, exposedHeaders: ['X-Request-Id','X-RateLimit-Limit','X-RateLimit-Window'] } : undefined))
 app.use(express.json({ limit: '2mb' }))
+app.use(compression())
 
 morgan.token('rid', (req: any) => req.id)
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms rid=:rid'))
@@ -56,6 +58,21 @@ app.get('/v1/config', (_req, res) => {
 		rateLimit: { max: env.RATE_LIMIT_MAX || 120, windowMs: env.RATE_LIMIT_WINDOW_MS || 60_000 },
 		s3: { endpoint: env.S3_ENDPOINT || null, region: env.S3_REGION || null, bucket: env.S3_BUCKET || null, inputsBucket: env.S3_INPUTS_BUCKET || env.S3_BUCKET || null },
 	})
+})
+
+app.get('/v1/_routes', (req, res) => {
+	const list: any[] = []
+	function collect(stack: any[], base = '') {
+		for (const layer of stack) {
+			if (layer.route && layer.route.path) {
+				const methods = Object.keys(layer.route.methods || {}).filter(Boolean)
+				list.push({ path: base + layer.route.path, methods })
+			}
+			if (layer.handle && layer.handle.stack) collect(layer.handle.stack, base + (layer.regexp?.fast_slash ? '' : ''))
+		}
+	}
+	collect((req.app as any)._router.stack)
+	res.json({ routes: list })
 })
 
 app.post('/v1/enhance', (req, res) => {

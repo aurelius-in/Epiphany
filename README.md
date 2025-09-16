@@ -87,6 +87,7 @@ Headers: `X-API-Key: <string>`, `Content-Type: application/json`
 - GET  `/v1/system` → `{ health, version, config }`
 - GET  `/v1/time` → `{ now: <iso> }`
 - GET  `/v1/queues` → BullMQ queue counts by state
+- GET  `/v1/_routes` → simple introspection of registered routes
 
 All request/response bodies are typed and validated with Zod (SDK included). SSE is supported for job progress.
 
