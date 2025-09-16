@@ -5,6 +5,26 @@ const headers = (apiKey: string) => ({
 	'X-API-Key': apiKey,
 })
 
+export type Generation = {
+	id: string
+	kind: 'image' | 'video'
+	status: string
+	outputUrl?: string | null
+	previewUrls?: string[] | null
+	createdAt?: string
+	inputPrompt?: string | null
+	aspect?: string | null
+	steps?: number | null
+	cfg?: number | null
+	seed?: number | null
+	modelId?: string | null
+	stylePreset?: string | null
+	safety?: any | null
+}
+
+export type Asset = { id: string, url: string, kind: string, mime: string, bytes?: number|null, width?: number|null, height?: number|null }
+export type Event = { id: string, generationId: string, type: string, payload: any, createdAt: string }
+
 export const enhanceReq = z.object({ prompt: z.string().min(1).max(2000) })
 export const enhanceRes = z.object({ promptEnhanced: z.string(), seedPhrases: z.array(z.string()) })
 
@@ -26,8 +46,11 @@ export async function enhance(baseUrl: string, apiKey: string, prompt: string) {
 	return enhanceRes.parse(j)
 }
 
-export async function getJob(baseUrl: string, apiKey: string, id: string, opts?: { signed?: boolean }) {
-	const q = opts?.signed ? '?signed=1' : ''
+export async function getJob(baseUrl: string, apiKey: string, id: string, opts?: { signed?: boolean, ttlSec?: number }) {
+	const p = new URLSearchParams()
+	if (opts?.signed) p.set('signed','1')
+	if (opts?.ttlSec) p.set('ttl', String(opts.ttlSec))
+	const q = p.toString() ? `?${p.toString()}` : ''
 	const r = await fetch(`${baseUrl}/v1/jobs/${id}${q}`, { headers: headers(apiKey) })
 	const j = await r.json()
 	return jobRes.parse(j)
@@ -103,16 +126,20 @@ const generationSchema = z.object({
 	safety: z.any().nullable().optional(),
 })
 
-export async function listGenerations(baseUrl: string, apiKey: string, page = 1, limit = 50, opts?: { signed?: boolean }) {
+export async function listGenerations(baseUrl: string, apiKey: string, page = 1, limit = 50, opts?: { signed?: boolean, ttlSec?: number }) {
 	const q = new URLSearchParams({ page: String(page), limit: String(limit) })
 	if (opts?.signed) q.set('signed','1')
+	if (opts?.ttlSec) q.set('ttl', String(opts.ttlSec))
 	const r = await fetch(`${baseUrl}/v1/generations?${q.toString()}`, { headers: headers(apiKey) })
 	const j = await r.json()
 	return z.object({ items: z.array(generationSchema), nextPage: z.number().optional() }).parse(j)
 }
 
-export async function getGeneration(baseUrl: string, apiKey: string, id: string, opts?: { signed?: boolean }) {
-	const q = opts?.signed ? '?signed=1' : ''
+export async function getGeneration(baseUrl: string, apiKey: string, id: string, opts?: { signed?: boolean, ttlSec?: number }) {
+	const p = new URLSearchParams()
+	if (opts?.signed) p.set('signed','1')
+	if (opts?.ttlSec) p.set('ttl', String(opts.ttlSec))
+	const q = p.toString() ? `?${p.toString()}` : ''
 	const r = await fetch(`${baseUrl}/v1/generations/${id}${q}`, { headers: headers(apiKey) })
 	const j = await r.json()
 	return generationSchema.parse(j)
@@ -176,9 +203,10 @@ export async function putBytesSigned(putUrl: string, bytes: Uint8Array, contentT
 	return true
 }
 
-export async function listAssets(baseUrl: string, apiKey: string, page = 1, limit = 100, opts?: { signed?: boolean }) {
+export async function listAssets(baseUrl: string, apiKey: string, page = 1, limit = 100, opts?: { signed?: boolean, ttlSec?: number }) {
 	const q = new URLSearchParams({ page: String(page), limit: String(limit) })
 	if (opts?.signed) q.set('signed','1')
+	if (opts?.ttlSec) q.set('ttl', String(opts.ttlSec))
 	const r = await fetch(`${baseUrl}/v1/assets?${q.toString()}`, { headers: headers(apiKey) })
 	const j = await r.json()
 	return z.object({ items: z.array(z.any()), nextPage: z.number().optional() }).parse(j)

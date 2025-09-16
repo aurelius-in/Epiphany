@@ -346,7 +346,7 @@
       }
 
       async function pollJob(id){
-        const st = await getJson(`${API_BASE}/v1/jobs/${id}?signed=1`);
+        const st = await getJson(`${API_BASE}/v1/jobs/${id}?signed=1&ttl=900`);
         return st;
       }
 

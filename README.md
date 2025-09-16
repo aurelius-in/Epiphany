@@ -70,10 +70,14 @@ Headers: `X-API-Key: <string>`, `Content-Type: application/json`
 - POST `/v1/edit/*` → upscale, restore-face, remove-bg, crop, resize, caption
 - GET  `/v1/jobs/:id` → `{ status, progress, outputUrl, previewUrls[], explainId, caption }`
 - GET  `/v1/jobs/:id/stream` → Server-Sent Events for live progress
+- GET  `/v1/jobs/by-generation/:id` → lookup job for a generation
+- POST `/v1/jobs/by-generation/:id/cancel` → cancel job for a generation
 - GET  `/v1/generations` → recent history (paginated)
 - GET  `/v1/generations/:id/events` → events for a generation
 - GET  `/v1/explain/:id` → token scores + heatmap URLs
 - GET  `/v1/events` → recent events (filter by `generationId`)
+- GET  `/v1/errors` → failed generations
+- POST `/v1/retry/:id` → retry a failed generation
 - GET  `/v1/assets` → recent assets (paginated, `?signed=1`)
 - GET  `/v1/health` → `{ ok, services:{db,redis,s3,infer_image,infer_video,edit,explain} }`
 - GET  `/v1/version` → `{ name, version }`
