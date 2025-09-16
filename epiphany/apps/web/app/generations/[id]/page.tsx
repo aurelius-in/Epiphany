@@ -26,6 +26,7 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 	const [showExplain, setShowExplain] = useState(false)
 	const [explain, setExplain] = useState<{ heatmapUrls?: string[], tokenScores?: any[] } | null>(null)
 	const [blur, setBlur] = useState(false)
+	const [showNsfw, setShowNsfw] = useState<boolean>(false)
 	const id = params.id
 
 	useEffect(() => {
@@ -50,6 +51,8 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 		}
 		run()
 	}, [id])
+	useEffect(() => { try { const v = localStorage.getItem('nsfwShow') === '1'; setShowNsfw(v) } catch {} }, [])
+	useEffect(() => { try { localStorage.setItem('nsfwShow', showNsfw ? '1' : '0') } catch {} }, [showNsfw])
 
 	async function onCancel() {
 		try { await fetch(`/api/proxy/v1/jobs/by-generation/${id}/cancel`, { method: 'POST' }); location.reload() } catch {}
@@ -81,7 +84,7 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 				<div style={{border:'1px solid #26262a', borderRadius:8, padding:8, background:'#101012'}}>
 					{gen.kind === 'image' && gen.outputUrl && (
 						<div style={{position:'relative'}}>
-							<img src={gen.outputUrl} alt={gen.id} style={{width:'100%', height:'auto', filter: blur ? 'blur(10px)' : 'none'}} />
+							<img src={gen.outputUrl} alt={gen.id} style={{width:'100%', height:'auto', filter: (blur || (!!gen.safety && (gen.safety as any).nsfw > 0 && !showNsfw)) ? 'blur(10px)' : 'none'}} />
 							{showExplain && explain?.heatmapUrls && explain.heatmapUrls[0] && (
 								<img src={explain.heatmapUrls[0]} alt="heatmap" style={{position:'absolute', inset:8, width:'calc(100% - 16px)', height:'auto', mixBlendMode:'screen', opacity:0.5, pointerEvents:'none'}} />
 							)}
@@ -106,6 +109,9 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 					<div style={{display:'flex', gap:8, alignItems:'center'}}>
 						<label style={{display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color:'#a4a4ad'}}>
 							<input type="checkbox" checked={blur} onChange={e=>setBlur(e.target.checked)} /> Blur output
+						</label>
+						<label style={{display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color:'#a4a4ad'}}>
+							<input type="checkbox" checked={showNsfw} onChange={e=>setShowNsfw(e.target.checked)} /> Show NSFW unblurred
 						</label>
 					</div>
 					{gen.outputUrl && <div style={{marginTop:8, fontSize:12}}>Output URL: <a href={gen.outputUrl} target="_blank" style={{color:'#cfd0ff'}}>{gen.outputUrl}</a> <button onClick={()=>{ try{ navigator.clipboard.writeText(gen.outputUrl || '') }catch{} }} style={{marginLeft:8, fontSize:12}}>Copy</button></div>}

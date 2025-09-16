@@ -32,6 +32,7 @@ export default function GalleryPage() {
 	const [styles, setStyles] = useState<string[]>([])
 	const [modelId, setModelId] = useState('')
 	const [stylePreset, setStylePreset] = useState('')
+	const [showNsfw, setShowNsfw] = useState<boolean>(false)
 	const [autoLoad, setAutoLoad] = useState(true)
 
 	async function load(p = 1) {
@@ -62,6 +63,8 @@ export default function GalleryPage() {
 	}
 
 	useEffect(() => { load(1) }, [])
+	useEffect(() => { try { const v = localStorage.getItem('nsfwShow') === '1'; setShowNsfw(v) } catch {} }, [])
+	useEffect(() => { try { localStorage.setItem('nsfwShow', showNsfw ? '1' : '0') } catch {} }, [showNsfw])
 	useEffect(() => {
 		if (!autoLoad) return
 		const el = document.getElementById('gallery-sentinel')
@@ -114,6 +117,9 @@ export default function GalleryPage() {
 				</select>
 				<button onClick={()=>{ setQ(''); load(1) }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Apply Filters</button>
 				<button onClick={()=>{ setQ(''); setModelId(''); setStylePreset(''); load(1) }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Clear</button>
+				<label style={{display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color:'#a4a4ad'}}>
+					<input type="checkbox" checked={showNsfw} onChange={e=>setShowNsfw(e.target.checked)} /> Show NSFW unblurred
+				</label>
 			</div>
 			{loading && page === 1 && <div>Loading…</div>}
 			{error && <div style={{color:'tomato'}}>Error: {error}</div>}
@@ -123,7 +129,7 @@ export default function GalleryPage() {
 						<a href={it.outputUrl ?? '#'} target="_blank" rel="noreferrer" style={{textDecoration:'none', color:'#e6e6ea'}}>
 							{it.kind === 'image' && it.outputUrl && (
 								<div style={{position:'relative'}}>
-									<img src={it.outputUrl} alt={it.id} style={{width:'100%', height:220, objectFit:'cover', filter: (it.safety && typeof (it.safety as any).nsfw === 'number' && (it.safety as any).nsfw > 0) ? 'blur(10px)' : 'none'}} />
+									<img src={it.outputUrl} alt={it.id} style={{width:'100%', height:220, objectFit:'cover', filter: (it.safety && typeof (it.safety as any).nsfw === 'number' && (it.safety as any).nsfw > 0 && !showNsfw) ? 'blur(10px)' : 'none'}} />
 									{(it.safety && typeof (it.safety as any).nsfw === 'number' && (it.safety as any).nsfw > 0) && (
 										<div style={{position:'absolute', inset:0, display:'grid', placeItems:'center', color:'#e6e6ea', fontWeight:600}}>NSFW blurred</div>
 									)}
