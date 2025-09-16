@@ -310,4 +310,20 @@ export async function getServerTime(baseUrl: string, apiKey: string) {
 	return await r.json()
 }
 
+export async function searchAssets(baseUrl: string, apiKey: string, params: { page?: number, limit?: number, kind?: string, mime?: string }) {
+	const q = new URLSearchParams()
+	if (params.page) q.set('page', String(params.page))
+	if (params.limit) q.set('limit', String(params.limit))
+	if (params.kind) q.set('kind', params.kind)
+	if (params.mime) q.set('mime', params.mime)
+	const r = await fetch(`${baseUrl}/v1/assets/search?${q.toString()}`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function searchGenerations(baseUrl: string, apiKey: string, qstr: string, page = 1, limit = 50) {
+	const q = new URLSearchParams({ q: qstr, page: String(page), limit: String(limit) })
+	const r = await fetch(`${baseUrl}/v1/generations/search?${q.toString()}`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
 export type { z } from 'zod'

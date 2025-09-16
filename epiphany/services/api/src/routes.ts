@@ -504,4 +504,27 @@ r.post('/retry/:id', async (req, res) => {
 	return res.status(400).json({ error: 'unsupported_kind' })
 })
 
+r.get('/assets/search', async (req, res) => {
+	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
+	const limit = Math.max(1, Math.min(200, parseInt(String(req.query.limit || '100')) || 100))
+	const kind = req.query.kind ? String(req.query.kind) : undefined
+	const mime = req.query.mime ? String(req.query.mime) : undefined
+	const where: any = {}
+	if (kind) where.kind = kind
+	if (mime) where.mime = mime
+	const items = await prisma.asset.findMany({ where, orderBy: { id: 'desc' as any }, skip: (page - 1) * limit, take: limit })
+	const nextPage = items.length === limit ? page + 1 : undefined
+	res.json({ items, nextPage })
+})
+
+r.get('/generations/search', async (req, res) => {
+	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
+	const limit = Math.max(1, Math.min(100, parseInt(String(req.query.limit || '50')) || 50))
+	const q = String(req.query.q || '').trim()
+	if (!q) return res.status(400).json({ error: 'missing_q' })
+	const items = await prisma.generation.findMany({ where: { inputPrompt: { contains: q, mode: 'insensitive' as any } } as any, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
+	const nextPage = items.length === limit ? page + 1 : undefined
+	res.json({ items, nextPage })
+})
+
 export const routes = r

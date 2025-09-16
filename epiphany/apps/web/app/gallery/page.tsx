@@ -27,11 +27,15 @@ export default function GalleryPage() {
 	const [nextPage, setNextPage] = useState<number | undefined>(undefined)
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
+	const [q, setQ] = useState('')
 
 	async function load(p = 1) {
 		setLoading(true)
 		try {
-			const res = await fetch(`/api/proxy/v1/generations?page=${p}&limit=24&signed=1&ttl=900`)
+			const url = q?
+				`/api/proxy/v1/generations/search?q=${encodeURIComponent(q)}&page=${p}&limit=24` :
+				`/api/proxy/v1/generations?page=${p}&limit=24&signed=1&ttl=900`
+			const res = await fetch(url)
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
 			const data: ListRes = await res.json()
 			setItems(prev => p === 1 ? data.items : [...prev, ...data.items])
@@ -69,6 +73,10 @@ export default function GalleryPage() {
 	return (
 		<div style={{padding: 16}}>
 			<h1 style={{marginBottom: 12}}>Gallery</h1>
+			<div style={{display:'flex', gap:8, alignItems:'center', marginBottom:12}}>
+				<input placeholder="Search prompt…" value={q} onChange={e=>setQ(e.target.value)} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8, width:'280px'}} />
+				<button onClick={()=>load(1)} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Search</button>
+			</div>
 			{loading && page === 1 && <div>Loading…</div>}
 			{error && <div style={{color:'tomato'}}>Error: {error}</div>}
 			<div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:12}}>
