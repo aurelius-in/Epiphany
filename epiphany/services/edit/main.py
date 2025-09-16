@@ -7,6 +7,7 @@ import hashlib
 import random
 import base64
 from typing import Tuple
+import requests
 
 app = FastAPI(title="Epiphany Edit")
 
@@ -17,6 +18,22 @@ S3_ACCESS_KEY = os.getenv('S3_ACCESS_KEY', 'minioadmin')
 S3_SECRET_KEY = os.getenv('S3_SECRET_KEY', 'minioadmin')
 
 s3 = boto3.client('s3', endpoint_url=S3_ENDPOINT, aws_access_key_id=S3_ACCESS_KEY, aws_secret_access_key=S3_SECRET_KEY, region_name=S3_REGION)
+
+ALLOWED_URL_PREFIXES = [p.strip() for p in (os.getenv('ALLOWED_URL_PREFIXES') or '').split(',') if p.strip()]
+
+def is_allowed_url(url: str) -> bool:
+	if not url:
+		return False
+	if url.startswith('data:'):
+		return True
+	if not (url.startswith('http://') or url.startswith('https://')):
+		return False
+	if not ALLOWED_URL_PREFIXES:
+		return True
+	for p in ALLOWED_URL_PREFIXES:
+		if url.startswith(p):
+			return True
+	return False
 
 def upload_png(key: str, buf: BytesIO) -> str:
 	buf.seek(0)
@@ -40,6 +57,14 @@ def fetch_image(url: str) -> Tuple[Image.Image, int, int]:
 		raw = base64.b64decode(b64)
 		im = Image.open(BytesIO(raw)).convert('RGBA')
 		return im, im.width, im.height
+	if url and (url.startswith('http://') or url.startswith('https://')) and is_allowed_url(url):
+		try:
+			r = requests.get(url, timeout=10)
+			r.raise_for_status()
+			im = Image.open(BytesIO(r.content)).convert('RGBA')
+			return im, im.width, im.height
+		except Exception:
+			pass
 	# Placeholder: in demo, return a gray image
 	im = Image.new('RGBA', (512, 512), (64,64,64,255))
 	return im, im.width, im.height

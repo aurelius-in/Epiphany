@@ -5,6 +5,7 @@ import boto3
 import hashlib
 import random
 from typing import Optional
+import requests
 
 app = FastAPI(title="Epiphany Infer Video")
 
@@ -26,6 +27,22 @@ try:
 	_diffusers_available = True
 except Exception:
 	_diffusers_available = False
+
+ALLOWED_URL_PREFIXES = [p.strip() for p in (os.getenv('ALLOWED_URL_PREFIXES') or '').split(',') if p.strip()]
+
+def is_allowed_url(url: str) -> bool:
+	if not url:
+		return False
+	if url.startswith('data:'):
+		return True
+	if not (url.startswith('http://') or url.startswith('https://')):
+		return False
+	if not ALLOWED_URL_PREFIXES:
+		return True
+	for p in ALLOWED_URL_PREFIXES:
+		if url.startswith(p):
+			return True
+	return False
 
 def upload_bytes(key: str, buf: BytesIO, content_type: str) -> str:
 	buf.seek(0)

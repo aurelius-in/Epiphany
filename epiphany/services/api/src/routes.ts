@@ -6,9 +6,30 @@ import { prisma } from './db'
 import { getEnv } from './env'
 import { getSignedUrl } from './s3'
 import { getSignedPutUrl, publicUrlFor } from './s3'
+import multer from 'multer'
 
 const env = getEnv()
 const r = Router()
+r.post('/upload', (() => {
+	const upload = multer({
+		limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+	})
+	return [upload.single('file'), async (req: any, res: any) => {
+		try {
+			if (!req.file) return res.status(400).json({ error: 'missing_file' })
+			const ct: string = req.file.mimetype || 'application/octet-stream'
+			const allowed = ['image/png','image/jpeg','image/webp','image/gif','image/bmp','image/tiff']
+			if (!allowed.includes(ct)) return res.status(400).json({ error: 'unsupported_type' })
+			const key = `inputs/${Date.now()}_${Math.random().toString(36).slice(2)}_${req.file.originalname.replace(/[^a-zA-Z0-9_.-]/g,'_')}`
+			const { putObjectToInputs } = await import('./s3')
+			const url = await putObjectToInputs(key, req.file.buffer, ct)
+			return res.json({ key, url })
+		} catch (e: any) {
+			return res.status(500).json({ error: 'upload_failed', message: String(e?.message || e) })
+		}
+	}] as any
+})())
+
 
 function maybeSign(url?: string | null, signed?: boolean, ttlSec?: number): string | undefined {
 	if (!url) return undefined
@@ -68,8 +89,8 @@ r.post('/generate/image', async (req, res) => {
 		safety: null as any,
 		error: null as any,
 	} })
-	await prisma.event.create({ data: { generationId: generation.id, type: 'enqueue', payload: body as any } })
-	const job = await queues.generate_image.add('generate', { ...body, mode: modeFinal, generationId: generation.id }, { removeOnComplete: true, removeOnFail: true })
+	await prisma.event.create({ data: { generationId: generation.id, type: 'enqueue', payload: { ...body, requestId: (req as any).id } as any } })
+	const job = await queues.generate_image.add('generate', { ...body, mode: modeFinal, generationId: generation.id, requestId: (req as any).id }, { removeOnComplete: true, removeOnFail: true })
 	res.json({ id: job.id })
 })
 
@@ -109,44 +130,44 @@ r.post('/generate/video', async (req, res) => {
 		safety: null as any,
 		error: null as any,
 	} })
-	await prisma.event.create({ data: { generationId: generation.id, type: 'enqueue', payload: body as any } })
-	const job = await queues.generate_video.add('generate', { ...body, mode: modeFinal, generationId: generation.id }, { removeOnComplete: true, removeOnFail: true })
+	await prisma.event.create({ data: { generationId: generation.id, type: 'enqueue', payload: { ...body, requestId: (req as any).id } as any } })
+	const job = await queues.generate_video.add('generate', { ...body, mode: modeFinal, generationId: generation.id, requestId: (req as any).id }, { removeOnComplete: true, removeOnFail: true })
 	res.json({ id: job.id })
 })
 
 r.post('/edit/upscale', async (req, res) => {
 	const body = z.object({ imageUrl: z.string().url(), scale: z.union([z.literal(2), z.literal(4)]) }).parse(req.body)
-	const job = await queues.edit_image.add('upscale', body, { removeOnComplete: true, removeOnFail: true })
+	const job = await queues.edit_image.add('upscale', { ...body, requestId: (req as any).id }, { removeOnComplete: true, removeOnFail: true })
 	res.json({ id: job.id })
 })
 
 r.post('/edit/restore-face', async (req, res) => {
 	const body = z.object({ imageUrl: z.string().url() }).parse(req.body)
-	const job = await queues.edit_image.add('restore-face', body, { removeOnComplete: true, removeOnFail: true })
+	const job = await queues.edit_image.add('restore-face', { ...body, requestId: (req as any).id }, { removeOnComplete: true, removeOnFail: true })
 	res.json({ id: job.id })
 })
 
 r.post('/edit/remove-bg', async (req, res) => {
 	const body = z.object({ imageUrl: z.string().url() }).parse(req.body)
-	const job = await queues.edit_image.add('remove-bg', body, { removeOnComplete: true, removeOnFail: true })
+	const job = await queues.edit_image.add('remove-bg', { ...body, requestId: (req as any).id }, { removeOnComplete: true, removeOnFail: true })
 	res.json({ id: job.id })
 })
 
 r.post('/edit/crop', async (req, res) => {
 	const body = z.object({ imageUrl: z.string().url(), x: z.number(), y: z.number(), w: z.number(), h: z.number() }).parse(req.body)
-	const job = await queues.edit_image.add('crop', body, { removeOnComplete: true, removeOnFail: true })
+	const job = await queues.edit_image.add('crop', { ...body, requestId: (req as any).id }, { removeOnComplete: true, removeOnFail: true })
 	res.json({ id: job.id })
 })
 
 r.post('/edit/resize', async (req, res) => {
 	const body = z.object({ imageUrl: z.string().url(), width: z.number().int().min(1), height: z.number().int().min(1) }).parse(req.body)
-	const job = await queues.edit_image.add('resize', body, { removeOnComplete: true, removeOnFail: true })
+	const job = await queues.edit_image.add('resize', { ...body, requestId: (req as any).id }, { removeOnComplete: true, removeOnFail: true })
 	res.json({ id: job.id })
 })
 
 r.post('/edit/caption', async (req, res) => {
 	const body = z.object({ imageUrl: z.string().url() }).parse(req.body)
-	const job = await queues.edit_image.add('caption', body, { removeOnComplete: true, removeOnFail: true })
+	const job = await queues.edit_image.add('caption', { ...body, requestId: (req as any).id }, { removeOnComplete: true, removeOnFail: true })
 	res.json({ id: job.id })
 })
 

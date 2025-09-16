@@ -7,3 +7,4 @@ Pillow==10.3.0
 pytest==8.3.2
 rembg==2.0.57
 opencv-python-headless==4.10.0.84
+requests==2.32.3
