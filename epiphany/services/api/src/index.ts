@@ -20,7 +20,7 @@ app.use((_, res, next) => {
 })
 
 app.use(requestId)
-app.use(tinyRateLimit())
+app.use(tinyRateLimit(env.RATE_LIMIT_MAX || 120, env.RATE_LIMIT_WINDOW_MS || 60_000))
 app.use(cors(env.WEB_ORIGIN ? { origin: env.WEB_ORIGIN } : undefined))
 app.use(express.json({ limit: '2mb' }))
 
@@ -32,6 +32,10 @@ app.use(apiKeyAuth(env.API_KEY))
 app.get('/v1/health', async (_req, res) => {
 	const summary = await healthSummary(env)
 	res.json(summary)
+})
+
+app.get('/v1/version', (_req, res) => {
+	res.json({ name: 'epiphany', version: process.env.npm_package_version || '0.1.0' })
 })
 
 app.post('/v1/enhance', (req, res) => {

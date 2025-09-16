@@ -13,6 +13,8 @@ export type AppEnv = {
 	API_KEY?: string
 	ALLOW_NSWF?: boolean
 	WEB_ORIGIN?: string
+	RATE_LIMIT_MAX?: number
+	RATE_LIMIT_WINDOW_MS?: number
 }
 
 export function getEnv(): AppEnv {
@@ -29,5 +31,7 @@ export function getEnv(): AppEnv {
 		API_KEY: process.env.API_KEY,
 		ALLOW_NSWF: String(process.env.ALLOW_NSWF || 'false').toLowerCase() === 'true',
 		WEB_ORIGIN: process.env.WEB_ORIGIN,
+		RATE_LIMIT_MAX: process.env.RATE_LIMIT_MAX ? Number(process.env.RATE_LIMIT_MAX) : undefined,
+		RATE_LIMIT_WINDOW_MS: process.env.RATE_LIMIT_WINDOW_MS ? Number(process.env.RATE_LIMIT_WINDOW_MS) : undefined,
 	}
 }

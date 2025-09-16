@@ -74,6 +74,7 @@ Headers: `X-API-Key: <string>`, `Content-Type: application/json`
 - GET  `/v1/explain/:id` → token scores + heatmap URLs
 - GET  `/v1/events` → recent events (filter by `generationId`)
 - GET  `/v1/health` → `{ ok, services:{db,redis,s3,infer_image,infer_video,edit,explain} }`
+- GET  `/v1/version` → `{ name, version }`
 
 All request/response bodies are typed and validated with Zod (SDK included). SSE is supported for job progress.
 
@@ -166,6 +167,7 @@ This flag propagates from API → workers → outputs and logs.
 ## Deployment
 - Ensure NVIDIA drivers and `nvidia-container-toolkit` installed on host
 - Set `WEB_ORIGIN=http://localhost:3000` (or your domain) for CORS
+- Optional rate limit: `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS`
 - `make up` to build and start services; `make buckets` to create MinIO buckets
 - Run `ops/scripts/smoke.sh` or `ops/scripts/smoke.ps1` to verify end‑to‑end
 
