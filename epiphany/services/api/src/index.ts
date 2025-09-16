@@ -126,6 +126,11 @@ app.get('/v1/_routes', (req, res) => {
 	res.json({ routes: list })
 })
 
+app.get('/v1/docs', (_req, res) => {
+	res.setHeader('Content-Type', 'text/html; charset=utf-8')
+	res.send(`<!doctype html><html><head><meta charset="utf-8"><title>Epiphany API Docs</title><style>body{font-family:system-ui;background:#0b0b0d;color:#e6e6ea;padding:20px} a{color:#cfd0ff;text-decoration:none}</style></head><body><h1>Epiphany API</h1><ul><li><a href="/v1/_routes" target="_blank">Routes</a></li><li><a href="/v1/health" target="_blank">Health</a></li><li><a href="/v1/version" target="_blank">Version</a></li><li><a href="/v1/config" target="_blank">Config</a></li><li><a href="/v1/metrics" target="_blank">Metrics</a></li><li><a href="/v1/events" target="_blank">Events</a></li><li><a href="/v1/assets" target="_blank">Assets</a></li></ul><p>Use the Web UI at <code>http://localhost:3000</code> for generation, editing, and explainability.</p></body></html>`)
+})
+
 const startedAt = Date.now()
 app.get('/v1/uptime', (_req, res) => res.json({ startedAt, uptimeMs: Date.now() - startedAt }))
 
