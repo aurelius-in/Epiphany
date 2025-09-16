@@ -5,6 +5,7 @@ from PIL import Image
 import boto3
 import hashlib
 import random
+import requests
 
 app = FastAPI(title="Epiphany Infer Image")
 
@@ -26,6 +27,22 @@ try:
     _diffusers_available = True
 except Exception:
     _diffusers_available = False
+
+ALLOWED_URL_PREFIXES = [p.strip() for p in (os.getenv('ALLOWED_URL_PREFIXES') or '').split(',') if p.strip()]
+
+def is_allowed_url(url: str) -> bool:
+    if not url:
+        return False
+    if url.startswith('data:'):
+        return True
+    if not (url.startswith('http://') or url.startswith('https://')):
+        return False
+    if not ALLOWED_URL_PREFIXES:
+        return True
+    for p in ALLOWED_URL_PREFIXES:
+        if url.startswith(p):
+            return True
+    return False
 
 def upload_png(key: str, buf: BytesIO) -> str:
 	buf.seek(0)
@@ -101,6 +118,18 @@ def try_generate_with_diffusers(prompt: str, width: int, height: int, steps: int
     except Exception:
         return None
 
+def fetch_bytes(url: str) -> bytes | None:
+    try:
+        if not is_allowed_url(url):
+            return None
+        if url and (url.startswith('http://') or url.startswith('https://')):
+            r = requests.get(url, timeout=10)
+            r.raise_for_status()
+            return r.content
+    except Exception:
+        return None
+    return None
+
 @app.get('/health')
 async def health():
 	return {"ok": True, "model": MODEL_ID}
@@ -158,7 +187,8 @@ async def img2img(request: Request):
 		pkey = f"gen/redacted_{random.randint(0, 1_000_000)}.png"
 		purl = upload_png(pkey, red)
 		previews = [purl]
-	return {"output_url": url, "preview_urls": previews, "safety_scores": safety, "image_meta": meta, "echo": {"initImageUrl": init_url}}
+	init_bytes = fetch_bytes(init_url or '')
+	return {"output_url": url, "preview_urls": previews, "safety_scores": safety, "image_meta": meta, "echo": {"initImageUrl": init_url, "initImageBytes": bool(init_bytes)}}
 
 @app.post('/infer/inpaint')
 async def inpaint(request: Request):
@@ -180,7 +210,8 @@ async def inpaint(request: Request):
 		pkey = f"gen/redacted_{random.randint(0, 1_000_000)}.png"
 		purl = upload_png(pkey, red)
 		previews = [purl]
-	return {"output_url": url, "preview_urls": previews, "safety_scores": safety, "image_meta": meta, "echo": {"maskUrl": mask_url}}
+	mask_bytes = fetch_bytes(mask_url or '')
+	return {"output_url": url, "preview_urls": previews, "safety_scores": safety, "image_meta": meta, "echo": {"maskUrl": mask_url, "maskBytes": bool(mask_bytes)}}
 
 @app.post('/infer/controlnet')
 async def controlnet(request: Request):

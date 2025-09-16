@@ -142,11 +142,23 @@
         <div>
           <label class="field-label" for="initFile">Init Image (optional)</label>
           <input id="initFile" type="file" accept="image/*" class="input" />
+          <div id="initPreviewWrap" style="margin-top:6px;display:flex;gap:6px;align-items:center">
+            <img id="initPreview" alt="Init preview" style="width:72px;height:72px;object-fit:cover;border:1px solid #26262a;border-radius:6px;display:none" />
+          </div>
         </div>
         <div>
           <label class="field-label" for="maskFile">Mask (optional)</label>
           <input id="maskFile" type="file" accept="image/*" class="input" />
+          <div id="maskPreviewWrap" style="margin-top:6px;display:flex;gap:6px;align-items:center">
+            <img id="maskPreview" alt="Mask preview" style="width:72px;height:72px;object-fit:cover;border:1px solid #26262a;border-radius:6px;display:none" />
+          </div>
         </div>
+      </div>
+
+      <div id="overlayPreviewWrap" class="card" style="margin-top:8px;padding:8px;display:none">
+        <div class="panel-title" style="margin-bottom:6px">Mask Overlay Preview</div>
+        <canvas id="overlayCanvas" width="256" height="256" style="width:256px;height:256px;border:1px solid #26262a;border-radius:6px"></canvas>
+        <div id="overlayHint" style="color:#a4a4ad;font-size:12px;margin-top:6px">Init + Mask composited preview</div>
       </div>
 
       <div class="actions">
@@ -204,6 +216,35 @@
     (function enableDnD(){
       const initEl = document.getElementById('initFile');
       const maskEl = document.getElementById('maskFile');
+      const initPreview = document.getElementById('initPreview');
+      const maskPreview = document.getElementById('maskPreview');
+      const overlayWrap = document.getElementById('overlayPreviewWrap');
+      const overlayCanvas = document.getElementById('overlayCanvas');
+      const ctx = overlayCanvas ? overlayCanvas.getContext('2d') : null;
+      function fileToUrl(file){ return new Promise((resolve,reject)=>{ const fr=new FileReader(); fr.onload=()=>resolve(fr.result); fr.onerror=reject; fr.readAsDataURL(file); }); }
+      async function syncPreviews(){
+        try{
+          const initF = (initEl && initEl.files && initEl.files[0]) ? initEl.files[0] : null;
+          const maskF = (maskEl && maskEl.files && maskEl.files[0]) ? maskEl.files[0] : null;
+          if (initF) { const u = await fileToUrl(initF); initPreview.src = String(u); initPreview.style.display='block'; } else { initPreview.style.display='none'; }
+          if (maskF) { const u = await fileToUrl(maskF); maskPreview.src = String(u); maskPreview.style.display='block'; } else { maskPreview.style.display='none'; }
+          if (ctx) {
+            ctx.clearRect(0,0,overlayCanvas.width, overlayCanvas.height);
+            if (initF) {
+              const img = new Image(); img.src = initPreview.src; await img.decode();
+              const w = overlayCanvas.width, h = overlayCanvas.height;
+              ctx.drawImage(img, 0, 0, w, h);
+              if (maskF) {
+                const m = new Image(); m.src = maskPreview.src; await m.decode();
+                ctx.globalAlpha = 0.45;
+                ctx.drawImage(m, 0, 0, w, h);
+                ctx.globalAlpha = 1;
+              }
+            }
+            overlayWrap.style.display = (initF && maskF) ? 'block' : 'none';
+          }
+        }catch(_){ /* ignore */ }
+      }
       function prevent(e){ e.preventDefault(); e.stopPropagation(); }
       ['dragenter','dragover','dragleave','drop'].forEach(ev => document.addEventListener(ev, prevent, false));
       document.addEventListener('dragover', () => document.body.classList.add('dragging'), false);
@@ -218,7 +259,10 @@
         } else if (initEl) {
           const d = new DataTransfer(); d.items.add(file); initEl.files = d.files;
         }
+        syncPreviews();
       }, false);
+      initEl?.addEventListener('change', syncPreviews);
+      maskEl?.addEventListener('change', syncPreviews);
     })();
   </script>
 
@@ -362,19 +406,33 @@
       async function uploadInitIfAny() {
         const f = (initFile && initFile.files && initFile.files[0]) ? initFile.files[0] : null;
         if (!f) return null;
-        const up = await postJson(`${API_BASE}/v1/upload-url`, { key: undefined, contentType: f.type || 'application/octet-stream' });
-        const putRes = await fetch(up.putUrl, { method: 'PUT', headers: { 'Content-Type': f.type || 'application/octet-stream' }, body: f });
-        if (!putRes.ok) throw new Error('upload failed ' + putRes.status);
-        return up.publicUrl;
+        try {
+          const up = await postJson(`${API_BASE}/v1/upload-url`, { key: undefined, contentType: f.type || 'application/octet-stream' });
+          const putRes = await fetch(up.putUrl, { method: 'PUT', headers: { 'Content-Type': f.type || 'application/octet-stream' }, body: f });
+          if (!putRes.ok) throw new Error('upload failed ' + putRes.status);
+          return up.publicUrl;
+        } catch (_e) {
+          const fd = new FormData(); fd.append('file', f, f.name || 'upload.bin');
+          const r = await fetch(`${API_BASE}/v1/upload`, { method: 'POST', headers: { 'X-API-Key': API_KEY }, body: fd });
+          if (!r.ok) throw new Error('multipart failed ' + r.status);
+          const j = await r.json(); return j.url;
+        }
       }
 
       async function uploadMaskIfAny() {
         const f = (maskFile && maskFile.files && maskFile.files[0]) ? maskFile.files[0] : null;
         if (!f) return null;
-        const up = await postJson(`${API_BASE}/v1/upload-url`, { key: undefined, contentType: f.type || 'application/octet-stream' });
-        const putRes = await fetch(up.putUrl, { method: 'PUT', headers: { 'Content-Type': f.type || 'application/octet-stream' }, body: f });
-        if (!putRes.ok) throw new Error('upload failed ' + putRes.status);
-        return up.publicUrl;
+        try {
+          const up = await postJson(`${API_BASE}/v1/upload-url`, { key: undefined, contentType: f.type || 'application/octet-stream' });
+          const putRes = await fetch(up.putUrl, { method: 'PUT', headers: { 'Content-Type': f.type || 'application/octet-stream' }, body: f });
+          if (!putRes.ok) throw new Error('upload failed ' + putRes.status);
+          return up.publicUrl;
+        } catch (_e) {
+          const fd = new FormData(); fd.append('file', f, f.name || 'upload.bin');
+          const r = await fetch(`${API_BASE}/v1/upload`, { method: 'POST', headers: { 'X-API-Key': API_KEY }, body: fd });
+          if (!r.ok) throw new Error('multipart failed ' + r.status);
+          const j = await r.json(); return j.url;
+        }
       }
       async function getJson(url) {
         const res = await fetch(url, { headers: headers() });

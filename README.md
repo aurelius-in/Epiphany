@@ -200,6 +200,19 @@ This flag propagates from API → workers → outputs and logs.
 - `make up` to build and start services; `make buckets` to create MinIO buckets
 - Run `ops/scripts/smoke.sh` or `ops/scripts/smoke.ps1` to verify end‑to‑end
 
+### Environment variables
+- API: `API_PORT`, `API_KEY`, `WEB_ORIGIN`, `ALLOW_NSWF`, `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS`
+- DB: `DATABASE_URL`
+- Redis: `REDIS_URL`
+- S3/MinIO: `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_INPUTS_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`
+- Workers: `INFER_IMAGE_PORT`, `INFER_VIDEO_PORT`, `EDIT_PORT`, `EXPLAIN_PORT`
+- Security: `ALLOWED_URL_PREFIXES` (comma‑separated URL prefixes allowed for remote fetch of init/mask/media)
+
+### GPU deployment notes
+- Install NVIDIA driver and `nvidia-container-toolkit`
+- Ensure CUDA‑compatible PyTorch wheels are used in worker images
+- Use Compose service GPU flags (already set) or `--gpus all` when running containers
+
 ---
 
 ## Color system (UI)

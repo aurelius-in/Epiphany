@@ -25,14 +25,21 @@ async function processGenerateImage(job: Job) {
 		await prisma.generation.update({ where: { id: job.data.generationId }, data: {
 			status: 'succeeded', outputUrl: resp.output_url || null, previewUrls: resp.preview_urls || [], durationMs, modelHash: resp.model_hash || null, safety: resp.safety_scores || null,
 		} })
-		await prisma.event.create({ data: { generationId: job.data.generationId, type: 'succeeded', payload: { jobId: job.id, durationMs } as any } })
+		await prisma.event.create({ data: { generationId: job.data.generationId, type: 'succeeded', payload: { jobId: job.id, durationMs, requestId: (job.data as any)?.requestId } as any } })
 		if (resp.output_url) {
 			const meta = (resp as any).image_meta || {}
 			await prisma.asset.create({ data: { url: resp.output_url, kind: 'image', mime: 'image/png', width: meta.width || null as any, height: meta.height || null as any, bytes: meta.bytes || null as any, sha256: meta.sha256 || null as any } })
 		}
 		if (Array.isArray(resp.preview_urls)) {
+			const metaMap: Record<string, any> = {}
+			if (Array.isArray((resp as any).preview_meta)) {
+				for (const m of (resp as any).preview_meta) {
+					if (m && m.url) metaMap[m.url] = m
+				}
+			}
 			for (const p of resp.preview_urls) {
-				await prisma.asset.create({ data: { url: p, kind: 'image', mime: 'image/png' } })
+				const m = metaMap[p] || {}
+				await prisma.asset.create({ data: { url: p, kind: 'image', mime: 'image/png', width: m.width || null as any, height: m.height || null as any, bytes: m.bytes || null as any, sha256: m.sha256 || null as any } })
 			}
 		}
 		const ex = await explainQueue.add('explain', { generationId: job.data.generationId, prompt: job.data?.prompt }, { removeOnComplete: true, removeOnFail: true })
@@ -40,7 +47,7 @@ async function processGenerateImage(job: Job) {
 		return { ...resp, explain_id: ex.id }
 	} catch (err: any) {
 		await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'failed', error: String(err?.message || err) } })
-		await prisma.event.create({ data: { generationId: job.data.generationId, type: 'failed', payload: { jobId: job.id, error: String(err?.message || err) } as any } })
+		await prisma.event.create({ data: { generationId: job.data.generationId, type: 'failed', payload: { jobId: job.id, error: String(err?.message || err), requestId: (job.data as any)?.requestId } as any } })
 		throw err
 	}
 }
@@ -54,7 +61,7 @@ async function processGenerateVideo(job: Job) {
 		await job.updateProgress(90)
 		const durationMs = resp.duration_ms || (Date.now() - t0)
 		await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'succeeded', outputUrl: resp.output_url || null, durationMs, modelHash: resp.model_hash || null } })
-		await prisma.event.create({ data: { generationId: job.data.generationId, type: 'succeeded', payload: { jobId: job.id, durationMs } as any } })
+		await prisma.event.create({ data: { generationId: job.data.generationId, type: 'succeeded', payload: { jobId: job.id, durationMs, requestId: (job.data as any)?.requestId } as any } })
 		if (resp.output_url) {
 			const meta = (resp as any).video_meta || {}
 			await prisma.asset.create({ data: { url: resp.output_url, kind: 'video', mime: 'video/mp4', bytes: meta.bytes || null as any, sha256: meta.sha256 || null as any } })
@@ -63,7 +70,7 @@ async function processGenerateVideo(job: Job) {
 		return resp
 	} catch (err: any) {
 		await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'failed', error: String(err?.message || err) } })
-		await prisma.event.create({ data: { generationId: job.data.generationId, type: 'failed', payload: { jobId: job.id, error: String(err?.message || err) } as any } })
+		await prisma.event.create({ data: { generationId: job.data.generationId, type: 'failed', payload: { jobId: job.id, error: String(err?.message || err), requestId: (job.data as any)?.requestId } as any } })
 		throw err
 	}
 }
@@ -83,7 +90,8 @@ async function processEdit(job: Job) {
 		const url = map[task] || 'http://localhost:8003/upscale'
 		const resp = await postJson<any>(url, job.data)
 		if (resp.output_url) {
-			await prisma.asset.create({ data: { url: resp.output_url, kind: 'image', mime: 'image/png' } })
+			const meta = (resp as any).image_meta || {}
+			await prisma.asset.create({ data: { url: resp.output_url, kind: 'image', mime: 'image/png', width: meta.width || null as any, height: meta.height || null as any, bytes: meta.bytes || null as any, sha256: meta.sha256 || null as any } })
 		}
 		await job.updateProgress(100)
 		return resp

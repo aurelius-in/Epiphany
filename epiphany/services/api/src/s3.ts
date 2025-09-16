@@ -33,6 +33,13 @@ export function publicUrlFor(key: string, useInputsBucket = false): string {
 	return `http://${endpoint}/${bucket}/${key}`
 }
 
+export async function putObjectToInputs(key: string, body: Buffer, contentType?: string): Promise<string> {
+	const bucket = (env.S3_INPUTS_BUCKET || env.S3_BUCKET)!
+	await (s3 as any).putObject({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }).promise()
+	const endpoint = env.S3_ENDPOINT?.replace('http://', '').replace('https://','')
+	return `http://${endpoint}/${bucket}/${key}`
+}
+
 function parseBucketKeyFromUrl(url: string): { bucket: string, key: string } | null {
 	if (!env.S3_ENDPOINT) return null
 	const endpoint = env.S3_ENDPOINT.replace(/\/$/, '')
