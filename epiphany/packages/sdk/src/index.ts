@@ -297,4 +297,14 @@ export async function waitForJob(baseUrl: string, apiKey: string, id: string, op
 	return getJob(baseUrl, apiKey, id, { signed: opts?.signed, ttlSec: opts?.ttlSec })
 }
 
+export async function getAsset(baseUrl: string, apiKey: string, id: string) {
+	const r = await fetch(`${baseUrl}/v1/assets/${id}`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function getServerTime(baseUrl: string, apiKey: string) {
+	const r = await fetch(`${baseUrl}/v1/time`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
 export type { z } from 'zod'

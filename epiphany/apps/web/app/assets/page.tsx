@@ -43,9 +43,12 @@ export default function AssetsPage() {
 						) : (
 							<video src={a.url} style={{width:'100%', height:180, objectFit:'cover'}} controls />
 						)}
-						<div style={{padding:8, fontSize:12, color:'#a4a4ad', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+						<div style={{padding:8, fontSize:12, color:'#a4a4ad', display:'flex', justifyContent:'space-between', alignItems:'center', gap:8}}>
 							<div>{a.kind} • {a.mime}</div>
-							<button onClick={async (e)=>{e.preventDefault(); if (!confirm('Delete this asset?')) return; try{ await fetch('/api/proxy/v1/assets', { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: a.id }) }); await load(1); }catch{}}} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'6px 10px', borderRadius:8}}>Delete</button>
+							<div style={{display:'flex', gap:8}}>
+								<a href={a.url} download style={{color:'#cfd0ff'}}>Download</a>
+								<button onClick={async (e)=>{e.preventDefault(); if (!confirm('Delete this asset?')) return; try{ await fetch('/api/proxy/v1/assets', { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: a.id }) }); await load(1); }catch{}}} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'6px 10px', borderRadius:8}}>Delete</button>
+							</div>
 						</div>
 					</div>
 				))}

@@ -310,6 +310,13 @@ r.get('/assets', async (req, res) => {
 	res.json({ items: mapped, nextPage })
 })
 
+r.get('/assets/:id', async (req, res) => {
+	const id = String(req.params.id)
+	const a = await prisma.asset.findUnique({ where: { id } }).catch(() => null)
+	if (!a) return res.status(404).json({ error: 'not_found' })
+	res.json(a)
+})
+
 r.delete('/assets', async (req, res) => {
 	const body = z.object({ id: z.string().optional(), url: z.string().url().optional() }).parse(req.body || {})
 	let where: any = {}

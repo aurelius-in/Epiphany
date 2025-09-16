@@ -86,11 +86,12 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 					<h3>Details</h3>
 					<ul>
 						<li>Status: {gen.status}</li>
-						<li>Prompt: {gen.inputPrompt}</li>
+						<li>Prompt: {gen.inputPrompt} <button onClick={()=>{ try{ navigator.clipboard.writeText(gen.inputPrompt || '') }catch{} }} style={{marginLeft:8, fontSize:12}}>Copy</button></li>
 						<li>Model: {gen.modelId}</li>
 						<li>Steps/CFG: {gen.steps ?? '-'} / {gen.cfg ?? '-'}</li>
 						<li>Seed: {gen.seed ?? '-'}</li>
 					</ul>
+					{gen.outputUrl && <div style={{marginTop:8, fontSize:12}}>Output URL: <a href={gen.outputUrl} target="_blank" style={{color:'#cfd0ff'}}>{gen.outputUrl}</a> <button onClick={()=>{ try{ navigator.clipboard.writeText(gen.outputUrl || '') }catch{} }} style={{marginLeft:8, fontSize:12}}>Copy</button></div>}
 				</div>
 			</div>
 			<div style={{border:'1px solid #26262a', borderRadius:8, padding:12}}>

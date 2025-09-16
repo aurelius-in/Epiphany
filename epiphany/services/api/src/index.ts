@@ -69,6 +69,7 @@ app.post('/v1/enhance', (req, res) => {
 })
 
 app.get('/v1/ping', (_req, res) => res.json({ pong: true }))
+app.get('/v1/time', (_req, res) => res.json({ now: new Date().toISOString() }))
 app.get('/v1/system', async (_req, res) => {
 	const health = await healthSummary(env)
 	const version = { name: 'epiphany', version: process.env.npm_package_version || '0.1.0' }
