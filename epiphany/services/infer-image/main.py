@@ -18,6 +18,15 @@ MODEL_ID = os.getenv('MODEL_ID', 'sdxl-base')
 
 s3 = boto3.client('s3', endpoint_url=S3_ENDPOINT, aws_access_key_id=S3_ACCESS_KEY, aws_secret_access_key=S3_SECRET_KEY, region_name=S3_REGION)
 
+_pipe = None
+_diffusers_available = False
+try:
+    from diffusers import StableDiffusionXLPipeline
+    import torch
+    _diffusers_available = True
+except Exception:
+    _diffusers_available = False
+
 def upload_png(key: str, buf: BytesIO) -> str:
 	buf.seek(0)
 	s3.put_object(Bucket=S3_BUCKET, Key=key, Body=buf.getvalue(), ContentType='image/png')
@@ -61,6 +70,37 @@ def choose_dims(aspect: str | None, preview: bool | None):
 		return base, base * 3 // 2
 	return base, base
 
+def load_pipe():
+    global _pipe
+    if _pipe is not None:
+        return _pipe
+    if not _diffusers_available:
+        return None
+    try:
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        _pipe = StableDiffusionXLPipeline.from_pretrained(
+            os.getenv('SDXL_MODEL', 'stabilityai/stable-diffusion-xl-base-1.0'),
+            torch_dtype=torch.float16 if device == 'cuda' else torch.float32
+        )
+        if device == 'cuda':
+            _pipe = _pipe.to(device)
+        return _pipe
+    except Exception:
+        return None
+
+def try_generate_with_diffusers(prompt: str, width: int, height: int, steps: int, cfg: float) -> BytesIO | None:
+    pipe = load_pipe()
+    if pipe is None:
+        return None
+    try:
+        g = pipe(prompt=prompt, num_inference_steps=max(1, min(steps, 20)), guidance_scale=max(1.0, min(cfg, 12.0)), height=height, width=width)
+        im = g.images[0]
+        buf = BytesIO()
+        im.save(buf, format='PNG')
+        return buf
+    except Exception:
+        return None
+
 @app.get('/health')
 async def health():
 	return {"ok": True, "model": MODEL_ID}
@@ -77,7 +117,7 @@ async def txt2img(request: Request):
 	attempt = 0
 	while True:
 		try:
-			buf = make_image(w, h, color=(0, 0, 0))
+			buf = try_generate_with_diffusers(prompt, w, h, steps, cfg) or make_image(w, h, color=(0, 0, 0))
 			break
 		except RuntimeError:
 			attempt += 1
