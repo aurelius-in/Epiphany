@@ -2,7 +2,7 @@
 import os
 import boto3
 from io import BytesIO
-from PIL import Image
+from PIL import Image, ImageFilter, ImageEnhance
 import hashlib
 import random
 import base64
@@ -34,19 +34,15 @@ def image_meta(buf: BytesIO, width: int, height: int):
 	sha256 = hashlib.sha256(data).hexdigest()
 	return {"width": width, "height": height, "bytes": len(data), "sha256": sha256}
 
-def fetch_image(url: str) -> Tuple[BytesIO, int, int]:
-    # Minimal fetcher: support data URLs (base64) for demo; otherwise return blank
-    if url.startswith('data:image/') and ';base64,' in url:
-        head, b64 = url.split(',', 1)
-        raw = base64.b64decode(b64)
-        im = Image.open(BytesIO(raw)).convert('RGBA')
-        buf = BytesIO()
-        im.save(buf, format='PNG')
-        return buf, im.width, im.height
-    # For brevity, skip HTTP fetch – demo environment uses data URLs
-    im = Image.new('RGBA', (512,512), (0,0,0,0))
-    buf = BytesIO(); im.save(buf, format='PNG')
-    return buf, 512, 512
+def fetch_image(url: str) -> Tuple[Image.Image, int, int]:
+	if url and url.startswith('data:image/') and ';base64,' in url:
+		head, b64 = url.split(',', 1)
+		raw = base64.b64decode(b64)
+		im = Image.open(BytesIO(raw)).convert('RGBA')
+		return im, im.width, im.height
+	# Placeholder: in demo, return a gray image
+	im = Image.new('RGBA', (512, 512), (64,64,64,255))
+	return im, im.width, im.height
 
 @app.get('/health')
 async def health():
@@ -54,28 +50,34 @@ async def health():
 
 @app.post('/upscale')
 async def upscale(request: Request):
-	_ = await request.json()
-	buf = make_image(1024, 1024, color=(5,5,5))
+	body = await request.json()
+	image_url = body.get('imageUrl')
+	scale = int(body.get('scale', 2))
+	im, w, h = fetch_image(image_url or '')
+	new_w, new_h = max(1, w*scale), max(1, h*scale)
+	res = im.resize((new_w, new_h), resample=Image.Resampling.LANCZOS)
+	buf = BytesIO(); res.convert('RGBA').save(buf, format='PNG')
 	key = f"edit/upscale_{random.randint(0,1_000_000)}.png"
 	url = upload_png(key, buf)
-	return {"output_url": url, "image_meta": image_meta(buf, 1024, 1024)}
+	return {"output_url": url, "image_meta": image_meta(buf, new_w, new_h)}
 
 @app.post('/restore-face')
 async def restore_face(request: Request):
-	_ = await request.json()
-	buf = make_image(512, 512, color=(7,7,7))
+	body = await request.json()
+	image_url = body.get('imageUrl')
+	im, w, h = fetch_image(image_url or '')
+	# Placeholder "face restore": slight sharpen and contrast enhance
+	res = ImageEnhance.Contrast(ImageEnhance.Sharpness(im).enhance(1.5)).enhance(1.1)
+	buf = BytesIO(); res.convert('RGBA').save(buf, format='PNG')
 	key = f"edit/restore_{random.randint(0,1_000_000)}.png"
 	url = upload_png(key, buf)
-	return {"output_url": url, "image_meta": image_meta(buf, 512, 512)}
+	return {"output_url": url, "image_meta": image_meta(buf, w, h)}
 
 @app.post('/remove-bg')
 async def remove_bg(request: Request):
 	body = await request.json()
 	image_url = body.get('imageUrl')
-	buf_in, w, h = fetch_image(image_url or '')
-	# Simple matting: convert non-transparent image to alpha mask if provided; placeholder keeps transparent
-	im = Image.open(BytesIO(buf_in.getvalue())).convert('RGBA')
-	# Placeholder "remove bg": set background to transparent by thresholding near-black pixels
+	im, w, h = fetch_image(image_url or '')
 	px = im.load()
 	for y in range(im.height):
 		for x in range(im.width):
@@ -88,21 +90,37 @@ async def remove_bg(request: Request):
 
 @app.post('/crop')
 async def crop(request: Request):
-	_ = await request.json()
-	buf = make_image(320, 240, color=(10,10,10))
+	body = await request.json()
+	image_url = body.get('imageUrl')
+	x = int(body.get('x', 0)); y = int(body.get('y', 0)); w = int(body.get('w', 0)); h = int(body.get('h', 0))
+	im, iw, ih = fetch_image(image_url or '')
+	x2, y2 = max(0, min(iw, x+w)), max(0, min(ih, y+h))
+	x1, y1 = max(0, min(iw, x)), max(0, min(ih, y))
+	if x2 <= x1 or y2 <= y1:
+		res = im
+	else:
+		res = im.crop((x1, y1, x2, y2))
+	buf = BytesIO(); res.convert('RGBA').save(buf, format='PNG')
 	key = f"edit/crop_{random.randint(0,1_000_000)}.png"
 	url = upload_png(key, buf)
-	return {"output_url": url, "image_meta": image_meta(buf, 320, 240)}
+	return {"output_url": url, "image_meta": image_meta(buf, res.width, res.height)}
 
 @app.post('/resize')
 async def resize(request: Request):
-	_ = await request.json()
-	buf = make_image(800, 600, color=(12,12,12))
+	body = await request.json()
+	image_url = body.get('imageUrl')
+	width = max(1, int(body.get('width', 0)))
+	height = max(1, int(body.get('height', 0)))
+	im, iw, ih = fetch_image(image_url or '')
+	res = im.resize((width, height), resample=Image.Resampling.LANCZOS)
+	buf = BytesIO(); res.convert('RGBA').save(buf, format='PNG')
 	key = f"edit/resize_{random.randint(0,1_000_000)}.png"
 	url = upload_png(key, buf)
-	return {"output_url": url, "image_meta": image_meta(buf, 800, 600)}
+	return {"output_url": url, "image_meta": image_meta(buf, width, height)}
 
 @app.post('/caption')
 async def caption(request: Request):
-	_ = await request.json()
-	return {"caption": "stub caption"}
+	body = await request.json()
+	# Placeholder caption: based on random and hash
+	text = f"A generated image #{random.randint(1000,9999)}"
+	return {"caption": text}

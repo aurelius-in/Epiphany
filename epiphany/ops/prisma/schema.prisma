@@ -48,6 +48,7 @@ model Asset {
   height  Int?
   bytes   Int?
   sha256  String?
+  createdAt DateTime @default(now())
 }
 
 model Explain {
