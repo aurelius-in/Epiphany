@@ -66,6 +66,7 @@ export default function HealthPage() {
 						<a href="/api/proxy/v1/events.csv" target="_blank" style={{color:'#cfd0ff'}}>Export Events CSV</a>
 						<a href="/api/proxy/v1/assets/export/csv" target="_blank" style={{color:'#cfd0ff'}}>Export Assets CSV</a>
 						<a href="/api/proxy/v1/stats/daily.csv" target="_blank" style={{color:'#cfd0ff'}}>Export Daily Stats CSV</a>
+						<a href="/api/proxy/v1/metrics.csv" target="_blank" style={{color:'#cfd0ff'}}>Export Metrics CSV</a>
 					</div>
 				</div>
 			)}

@@ -430,6 +430,38 @@ r.get('/metrics', async (_req, res) => {
 	res.json({ totals: { generations: genCount, assets: assetCount, events: eventCount, explains: explainCount }, generationsByStatus: { succeeded: genSucceeded, failed: genFailed, queued: genQueued } })
 })
 
+r.get('/metrics.csv', async (_req, res) => {
+	const [genCount, assetCount, eventCount, explainCount, genSucceeded, genFailed, genQueued] = await Promise.all([
+		prisma.generation.count(),
+		prisma.asset.count(),
+		prisma.event.count(),
+		prisma.explain.count(),
+		prisma.generation.count({ where: { status: 'succeeded' } as any }),
+		prisma.generation.count({ where: { status: 'failed' } as any }),
+		prisma.generation.count({ where: { status: 'queued' } as any }),
+	])
+	const rows = [
+		['generations','assets','events','explains','succeeded','failed','queued'],
+		[String(genCount), String(assetCount), String(eventCount), String(explainCount), String(genSucceeded), String(genFailed), String(genQueued)],
+	]
+	const csv = rows.map(r => r.join(',')).join('\n')
+	res.setHeader('Content-Type', 'text/csv')
+	res.setHeader('Content-Disposition', 'attachment; filename="metrics.csv"')
+	res.send(csv)
+})
+
+r.post('/queues/empty', async (req, res) => {
+	const body = z.object({ name: z.string() }).parse(req.body || {})
+	const q: any = (queues as any)[body.name]
+	if (!q) return res.status(404).json({ error: 'not_found' })
+	try {
+		await q.drain(true)
+		return res.json({ ok: true })
+	} catch (e: any) {
+		return res.status(500).json({ error: 'drain_failed', message: String(e?.message || e) })
+	}
+})
+
 r.get('/jobs/by-generation/:id', async (req, res) => {
 	const generationId = String(req.params.id)
 	for (const [name, q] of Object.entries(queues)) {
