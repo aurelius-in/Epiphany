@@ -1,6 +1,8 @@
 ﻿from fastapi import FastAPI
 import os
 import boto3
+from io import BytesIO
+from PIL import Image
 
 app = FastAPI(title="Epiphany Explain")
 
@@ -18,7 +20,13 @@ async def health():
 
 @app.get('/attention/{id}')
 async def attention(id: str):
-	return {"id": id, "heatmap_urls": [f"{S3_ENDPOINT}/{S3_BUCKET}/stub/{id}_attn.png"]}
+	buf = BytesIO()
+	img = Image.new('RGB', (64, 64), color=(80, 0, 100))
+	img.save(buf, format='PNG')
+	key = f"stub/{id}_attn.png"
+	s3.put_object(Bucket=S3_BUCKET, Key=key, Body=buf.getvalue(), ContentType='image/png')
+	url = f"{S3_ENDPOINT}/{S3_BUCKET}/{key}"
+	return {"id": id, "heatmap_urls": [url]}
 
 @app.get('/tokens/{id}')
 async def tokens(id: str):

@@ -15,8 +15,11 @@ async function forward(req: NextRequest, path: string) {
 		init.body = body
 	}
 	const res = await fetch(url, init)
-	const text = await res.text()
-	return new NextResponse(text, { status: res.status, headers: { 'Content-Type': res.headers.get('content-type') || 'application/json' } })
+	const passHeaders: Record<string,string> = {}
+	const ct = res.headers.get('content-type') || ''
+	if (ct) passHeaders['Content-Type'] = ct
+	passHeaders['Cache-Control'] = res.headers.get('cache-control') || 'no-cache'
+	return new NextResponse(res.body as any, { status: res.status, headers: passHeaders })
 }
 
 export async function GET(req: NextRequest, { params }: { params: { path: string[] } }) {

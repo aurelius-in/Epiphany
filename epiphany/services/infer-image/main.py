@@ -3,6 +3,8 @@ import os
 from io import BytesIO
 from PIL import Image
 import boto3
+import hashlib
+import random
 
 app = FastAPI(title="Epiphany Infer Image")
 
@@ -21,6 +23,44 @@ def upload_png(key: str, buf: BytesIO) -> str:
 	s3.put_object(Bucket=S3_BUCKET, Key=key, Body=buf.getvalue(), ContentType='image/png')
 	return f"{S3_ENDPOINT}/{S3_BUCKET}/{key}"
 
+def make_image(width: int, height: int, color=(0, 0, 0)) -> BytesIO:
+	img = Image.new('RGB', (width, height), color=color)
+	buf = BytesIO()
+	img.save(buf, format='PNG')
+	return buf
+
+def image_meta(buf: BytesIO, width: int, height: int):
+	data = buf.getvalue()
+	sha256 = hashlib.sha256(data).hexdigest()
+	return {
+		"width": width,
+		"height": height,
+		"bytes": len(data),
+		"sha256": sha256,
+	}
+
+def simple_safety_from_prompt(prompt: str):
+	p = (prompt or '').lower()
+	nsfw_keywords = ['nsfw', 'nude', 'nudity', 'explicit', 'adult']
+	score = 1.0 if any(k in p for k in nsfw_keywords) else 0.0
+	return {"nsfw": score}
+
+def choose_dims(aspect: str | None, preview: bool | None):
+	if aspect not in ["1:1", "16:9", "9:16", "3:2", "2:3"]:
+		aspect = "1:1"
+	base = 384 if preview else 768
+	if aspect == "1:1":
+		return base, base
+	if aspect == "16:9":
+		return base * 16 // 9, base
+	if aspect == "9:16":
+		return base, base * 16 // 9
+	if aspect == "3:2":
+		return base * 3 // 2, base
+	if aspect == "2:3":
+		return base, base * 3 // 2
+	return base, base
+
 @app.get('/health')
 async def health():
 	return {"ok": True, "model": MODEL_ID}
@@ -31,39 +71,61 @@ async def txt2img(request: Request):
 	prompt = body.get('prompt', '')
 	steps = int(body.get('steps', 20))
 	cfg = float(body.get('cfg', 7.0))
-	img = Image.new('RGB', (64, 64), color=(0, 0, 0))
-	buf = BytesIO()
-	img.save(buf, format='PNG')
-	url = upload_png('stub/txt2img.png', buf)
-	return {"output_url": url, "preview_urls": [], "model_hash": MODEL_ID, "duration_ms": 1, "safety_scores": {"dummy": 0.0}, "echo": {"prompt": prompt, "steps": steps, "cfg": cfg}}
+	aspect = body.get('aspect')
+	preview = bool(body.get('preview', False))
+	w, h = choose_dims(aspect, preview)
+	attempt = 0
+	while True:
+		try:
+			buf = make_image(w, h, color=(0, 0, 0))
+			break
+		except RuntimeError:
+			attempt += 1
+			if attempt > 2:
+				raise
+			w //= 2
+			h //= 2
+	key = f"gen/txt2img_{random.randint(0, 1_000_000)}.png"
+	url = upload_png(key, buf)
+	meta = image_meta(buf, w, h)
+	return {"output_url": url, "preview_urls": [], "model_hash": MODEL_ID, "duration_ms": 1, "safety_scores": simple_safety_from_prompt(prompt), "image_meta": meta, "echo": {"prompt": prompt, "steps": steps, "cfg": cfg}}
 
 @app.post('/infer/img2img')
 async def img2img(request: Request):
 	body = await request.json()
 	init_url = body.get('initImageUrl')
-	img = Image.new('RGB', (64, 64), color=(10, 10, 10))
-	buf = BytesIO()
-	img.save(buf, format='PNG')
-	url = upload_png('stub/img2img.png', buf)
-	return {"output_url": url, "preview_urls": [], "echo": {"initImageUrl": init_url}}
+	aspect = body.get('aspect')
+	preview = bool(body.get('preview', False))
+	w, h = choose_dims(aspect, preview)
+	buf = make_image(w, h, color=(10, 10, 10))
+	key = f"gen/img2img_{random.randint(0, 1_000_000)}.png"
+	url = upload_png(key, buf)
+	meta = image_meta(buf, w, h)
+	return {"output_url": url, "preview_urls": [], "image_meta": meta, "echo": {"initImageUrl": init_url}}
 
 @app.post('/infer/inpaint')
 async def inpaint(request: Request):
 	body = await request.json()
 	mask_url = body.get('maskUrl')
-	img = Image.new('RGB', (64, 64), color=(20, 20, 20))
-	buf = BytesIO()
-	img.save(buf, format='PNG')
-	url = upload_png('stub/inpaint.png', buf)
-	return {"output_url": url, "preview_urls": [], "echo": {"maskUrl": mask_url}}
+	aspect = body.get('aspect')
+	preview = bool(body.get('preview', False))
+	w, h = choose_dims(aspect, preview)
+	buf = make_image(w, h, color=(20, 20, 20))
+	key = f"gen/inpaint_{random.randint(0, 1_000_000)}.png"
+	url = upload_png(key, buf)
+	meta = image_meta(buf, w, h)
+	return {"output_url": url, "preview_urls": [], "image_meta": meta, "echo": {"maskUrl": mask_url}}
 
 @app.post('/infer/controlnet')
 async def controlnet(request: Request):
 	body = await request.json()
 	ctrl = body.get('controlnet', {})
 	ctype = ctrl.get('type')
-	img = Image.new('RGB', (64, 64), color=(30, 30, 30))
-	buf = BytesIO()
-	img.save(buf, format='PNG')
-	url = upload_png(f'stub/controlnet_{ctype or "none"}.png', buf)
-	return {"output_url": url, "preview_urls": [], "echo": {"controlnet": ctrl}}
+	aspect = body.get('aspect')
+	preview = bool(body.get('preview', False))
+	w, h = choose_dims(aspect, preview)
+	buf = make_image(w, h, color=(30, 30, 30))
+	key = f"gen/controlnet_{ctype or 'none'}_{random.randint(0, 1_000_000)}.png"
+	url = upload_png(key, buf)
+	meta = image_meta(buf, w, h)
+	return {"output_url": url, "preview_urls": [], "image_meta": meta, "echo": {"controlnet": ctrl}}

@@ -16,6 +16,7 @@ type Generation = {
 	seed?: number | null
 	modelId?: string | null
 	stylePreset?: string | null
+	safety?: any | null
 }
 
 type ListRes = { items: Generation[], nextPage?: number }
@@ -30,7 +31,7 @@ export default function GalleryPage() {
 	async function load(p = 1) {
 		setLoading(true)
 		try {
-			const res = await fetch(`/api/proxy/v1/generations?page=${p}&limit=24`)
+			const res = await fetch(`/api/proxy/v1/generations?page=${p}&limit=24&signed=1`)
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
 			const data: ListRes = await res.json()
 			setItems(prev => p === 1 ? data.items : [...prev, ...data.items])
@@ -57,6 +58,14 @@ export default function GalleryPage() {
 		return `/?${q.toString()}`
 	}
 
+	function safetyLabel(s: any | null | undefined) {
+		if (!s) return null
+		const nsfw = typeof s.nsfw === 'number' ? s.nsfw : 0
+		if (nsfw >= 0.8) return 'NSFW high'
+		if (nsfw >= 0.3) return 'NSFW med'
+		return 'Safe'
+	}
+
 	return (
 		<div style={{padding: 16}}>
 			<h1 style={{marginBottom: 12}}>Gallery</h1>
@@ -75,7 +84,10 @@ export default function GalleryPage() {
 						</a>
 						<div style={{padding:8, fontSize:12, color:'#a4a4ad', display:'flex', justifyContent:'space-between', alignItems:'center', gap:8}}>
 							<div>{it.kind} • {it.status}</div>
-							<a href={recreateHref(it)} style={{color:'#cfd0ff'}}>Recreate</a>
+							<div style={{display:'flex', gap:6, alignItems:'center'}}>
+								{it.safety && <span style={{border:'1px solid #26262a', padding:'2px 6px', borderRadius:8}}>{safetyLabel(it.safety)}</span>}
+								<a href={recreateHref(it)} style={{color:'#cfd0ff'}}>Recreate</a>
+							</div>
 						</div>
 					</div>
 				))}

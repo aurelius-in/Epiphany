@@ -27,7 +27,13 @@ async function processGenerateImage(job: Job) {
 		} })
 		await prisma.event.create({ data: { generationId: job.data.generationId, type: 'succeeded', payload: { jobId: job.id, durationMs } as any } })
 		if (resp.output_url) {
-			await prisma.asset.create({ data: { url: resp.output_url, kind: 'image', mime: 'image/png' } })
+			const meta = (resp as any).image_meta || {}
+			await prisma.asset.create({ data: { url: resp.output_url, kind: 'image', mime: 'image/png', width: meta.width || null as any, height: meta.height || null as any, bytes: meta.bytes || null as any, sha256: meta.sha256 || null as any } })
+		}
+		if (Array.isArray(resp.preview_urls)) {
+			for (const p of resp.preview_urls) {
+				await prisma.asset.create({ data: { url: p, kind: 'image', mime: 'image/png' } })
+			}
 		}
 		const ex = await explainQueue.add('explain', { generationId: job.data.generationId }, { removeOnComplete: true, removeOnFail: true })
 		await job.updateProgress(100)
@@ -50,7 +56,8 @@ async function processGenerateVideo(job: Job) {
 		await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'succeeded', outputUrl: resp.output_url || null, durationMs, modelHash: resp.model_hash || null } })
 		await prisma.event.create({ data: { generationId: job.data.generationId, type: 'succeeded', payload: { jobId: job.id, durationMs } as any } })
 		if (resp.output_url) {
-			await prisma.asset.create({ data: { url: resp.output_url, kind: 'video', mime: 'video/mp4' } })
+			const meta = (resp as any).video_meta || {}
+			await prisma.asset.create({ data: { url: resp.output_url, kind: 'video', mime: 'video/mp4', bytes: meta.bytes || null as any, sha256: meta.sha256 || null as any } })
 		}
 		await job.updateProgress(100)
 		return resp

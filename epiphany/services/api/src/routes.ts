@@ -4,9 +4,22 @@ import { queues } from './queues'
 import { Job } from 'bullmq'
 import { prisma } from './db'
 import { getEnv } from './env'
+import { getSignedUrl } from './s3'
 
 const env = getEnv()
 const r = Router()
+
+function maybeSign(url?: string | null, signed?: boolean): string | undefined {
+	if (!url) return undefined
+	if (!signed) return url || undefined
+	try {
+		const prefix = `${env.S3_ENDPOINT?.replace(/\/$/, '')}/${env.S3_BUCKET}`
+		const key = url.replace(prefix + '/', '')
+		return getSignedUrl(key)
+	} catch {
+		return url || undefined
+	}
+}
 
 r.post('/enhance', async (req, res) => {
 	const body = z.object({ prompt: z.string().min(1).max(2000) }).parse(req.body)
@@ -138,6 +151,7 @@ r.post('/edit/caption', async (req, res) => {
 
 r.get('/jobs/:id', async (req, res) => {
 	const id = req.params.id
+	const signed = String(req.query.signed || '0') === '1'
 	async function statusOf(qname: keyof typeof queues): Promise<Job | null> {
 		return queues[qname].getJob(id)
 	}
@@ -148,7 +162,36 @@ r.get('/jobs/:id', async (req, res) => {
 	const result = (await job.getReturnValue().catch(() => null)) as any
 	const failedReason = (job as any).failedReason || undefined
 	const statusMap: Record<string,string> = { waiting: 'queued', delayed: 'queued', active: 'running', completed: 'succeeded', failed: 'failed', paused: 'queued' }
-	res.json({ id, status: statusMap[state] || state, progress, outputUrl: result?.output_url, previewUrls: result?.preview_urls, explainId: result?.explain_id, caption: result?.caption, error: failedReason })
+	const outputUrl = result?.output_url
+	const previewUrls = Array.isArray(result?.preview_urls) ? result.preview_urls : undefined
+	res.json({ id, status: statusMap[state] || state, progress, outputUrl: signed ? maybeSign(outputUrl, true) : outputUrl, previewUrls: signed && previewUrls ? previewUrls.map((u: string) => maybeSign(u, true)) : previewUrls, explainId: result?.explain_id, caption: result?.caption, error: failedReason })
+})
+
+r.get('/jobs/:id/stream', async (req, res) => {
+	res.setHeader('Content-Type', 'text/event-stream')
+	res.setHeader('Cache-Control', 'no-cache')
+	res.setHeader('Connection', 'keep-alive')
+	const id = String(req.params.id)
+	function send(event: any) {
+		res.write(`data: ${JSON.stringify(event)}\n\n`)
+	}
+	let closed = false
+	req.on('close', () => { closed = true })
+	const interval = setInterval(async () => {
+		if (closed) { clearInterval(interval); return }
+		const statusOf = async (qname: keyof typeof queues) => queues[qname].getJob(id)
+		const job = (await statusOf('generate_image')) || (await statusOf('generate_video')) || (await statusOf('edit_image')) || (await statusOf('explain'))
+		if (!job) { send({ id, status: 'not_found' }); clearInterval(interval); res.end(); return }
+		const state = await job.getState()
+		const progress = (job.progress as any) || 0
+		send({ id, state, progress })
+		if (state === 'completed' || state === 'failed') {
+			const result = (await job.getReturnValue().catch(() => null)) as any
+			send({ id, done: true, state, result })
+			clearInterval(interval)
+			res.end()
+		}
+	}, 700)
 })
 
 r.post('/jobs/:id/cancel', async (req, res) => {
@@ -175,16 +218,26 @@ r.post('/jobs/:id/cancel', async (req, res) => {
 r.get('/generations', async (req, res) => {
 	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
 	const limit = Math.max(1, Math.min(100, parseInt(String(req.query.limit || '50')) || 50))
+	const signed = String(req.query.signed || '0') === '1'
 	const items = await prisma.generation.findMany({ orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
 	const nextPage = items.length === limit ? page + 1 : undefined
-	res.json({ items, nextPage })
+	const mapped = items.map((g: any) => {
+		return {
+			...g,
+			outputUrl: signed ? maybeSign(g.outputUrl, true) : g.outputUrl,
+			previewUrls: signed && Array.isArray(g.previewUrls) ? g.previewUrls.map((u: string) => maybeSign(u, true)) : g.previewUrls,
+		}
+	})
+	res.json({ items: mapped, nextPage })
 })
 
 r.get('/generations/:id', async (req, res) => {
 	const id = String(req.params.id)
+	const signed = String(req.query.signed || '0') === '1'
 	const gen = await prisma.generation.findUnique({ where: { id } }).catch(() => null)
 	if (!gen) return res.status(404).json({ error: 'not_found' })
-	res.json(gen)
+	const out = { ...gen, outputUrl: signed ? maybeSign(gen.outputUrl || undefined, true) : gen.outputUrl, previewUrls: signed && Array.isArray(gen.previewUrls) ? gen.previewUrls.map(u => maybeSign(u, true)) : gen.previewUrls }
+	res.json(out)
 })
 
 r.get('/explain/:id', async (req, res) => {
@@ -194,6 +247,16 @@ r.get('/explain/:id', async (req, res) => {
 	const byGen = await prisma.explain.findFirst({ where: { generationId: id }, orderBy: { /* latest first */ id: 'desc' as any } }).catch(() => null)
 	if (byGen) return res.json({ id: byGen.id, tokenScores: byGen.tokenScores as any, heatmapUrls: byGen.heatmapUrls as any })
 	return res.status(404).json({ error: 'not_found' })
+})
+
+r.get('/events', async (req, res) => {
+	const generationId = req.query.generationId ? String(req.query.generationId) : undefined
+	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
+	const limit = Math.max(1, Math.min(200, parseInt(String(req.query.limit || '100')) || 100))
+	const where = generationId ? { generationId } : {}
+	const items = await prisma.event.findMany({ where: where as any, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
+	const nextPage = items.length === limit ? page + 1 : undefined
+	res.json({ items, nextPage })
 })
 
 export const routes = r
