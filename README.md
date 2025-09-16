@@ -74,6 +74,7 @@ Headers: `X-API-Key: <string>`, `Content-Type: application/json`
 - GET  `/v1/jobs/by-generation/:id` → lookup job for a generation
 - POST `/v1/jobs/by-generation/:id/cancel` → cancel job for a generation
 - DELETE `/v1/jobs/:id` → remove a job (if present)
+- HEAD   `/v1/jobs/:id` → 200 if job exists
 - GET  `/v1/generations` → recent history (paginated; supports `?signed=1&ttl=900`)
 - GET  `/v1/generations/search` → search by prompt substring (`?q=`)
 - GET  `/v1/generations/:id/events` → events for a generation
@@ -83,6 +84,8 @@ Headers: `X-API-Key: <string>`, `Content-Type: application/json`
 - GET  `/v1/errors` → failed generations
 - POST `/v1/retry/:id` → retry a failed generation
 - GET  `/v1/assets` → recent assets (paginated; supports `?signed=1&ttl=900`)
+- GET  `/v1/assets/:id/signed` → returns signed URL for the asset (optional `?ttl=`)
+- GET  `/v1/assets/sign?url=` → sign arbitrary public S3 URL from this MinIO
 - GET  `/v1/assets/search` → filter by kind/mime
 - GET  `/v1/health` → `{ ok, services:{db,redis,s3,infer_image,infer_video,edit,explain} }`
 - GET  `/v1/version` → `{ name, version }`

@@ -238,6 +238,15 @@ r.delete('/jobs/:id', async (req, res) => {
 	res.json({ id, removed })
 })
 
+r.head('/jobs/:id', async (req, res) => {
+	const id = String(req.params.id)
+	for (const q of Object.values(queues)) {
+		const j = await (q as any).getJob(id)
+		if (j) return res.status(200).end()
+	}
+	return res.status(404).end()
+})
+
 r.get('/generations', async (req, res) => {
 	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
 	const limit = Math.max(1, Math.min(100, parseInt(String(req.query.limit || '50')) || 50))
@@ -546,6 +555,20 @@ r.get('/generations/search', async (req, res) => {
 	const items = await prisma.generation.findMany({ where: { inputPrompt: { contains: q, mode: 'insensitive' as any } } as any, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
 	const nextPage = items.length === limit ? page + 1 : undefined
 	res.json({ items, nextPage })
+})
+
+r.get('/assets/:id/signed', async (req, res) => {
+	const id = String(req.params.id)
+	const ttl = parseInt(String(req.query.ttl || '3600')) || 3600
+	const a = await prisma.asset.findUnique({ where: { id } }).catch(() => null)
+	if (!a) return res.status(404).json({ error: 'not_found' })
+	try {
+		const { signPublicUrl } = await import('./s3')
+		const url = signPublicUrl(a.url, ttl)
+		return res.json({ url })
+	} catch (e: any) {
+		return res.status(400).json({ error: 'cannot_sign', message: String(e?.message || e) })
+	}
 })
 
 export const routes = r

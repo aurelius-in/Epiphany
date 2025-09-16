@@ -65,3 +65,5 @@ curl -sSf -H "X-API-Key: $API_KEY" "$API_BASE/v1/config" | jq . || true
 echo "ping/time..."
 curl -sSf -H "X-API-Key: $API_KEY" "$API_BASE/v1/ping" | jq . || true
 curl -sSf -H "X-API-Key: $API_KEY" "$API_BASE/v1/time" | jq . || true
+echo "healthz..."
+curl -sSf -I -H "X-API-Key: $API_KEY" "$API_BASE/v1/healthz" | head -n 1 || true

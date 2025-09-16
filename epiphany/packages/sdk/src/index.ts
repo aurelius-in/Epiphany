@@ -305,6 +305,16 @@ export async function getAsset(baseUrl: string, apiKey: string, id: string) {
 	return await r.json()
 }
 
+export async function getSignedAssetUrl(baseUrl: string, apiKey: string, id: string, ttlSec = 3600) {
+	const r = await fetch(`${baseUrl}/v1/assets/${id}/signed?ttl=${ttlSec}`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function signPublicAssetUrl(baseUrl: string, apiKey: string, url: string, ttlSec = 3600) {
+	const r = await fetch(`${baseUrl}/v1/assets/sign?url=${encodeURIComponent(url)}&ttl=${ttlSec}`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
 export async function getServerTime(baseUrl: string, apiKey: string) {
 	const r = await fetch(`${baseUrl}/v1/time`, { headers: headers(apiKey) })
 	return await r.json()
