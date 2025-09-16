@@ -52,3 +52,6 @@ curl -sSf -H "X-API-Key: $API_KEY" "$API_BASE/v1/assets?signed=1&limit=5" | jq -
 
 echo "events..."
 curl -sSf -H "X-API-Key: $API_KEY" "$API_BASE/v1/events?limit=5" | jq -r '.items[0].type' || true
+
+echo "metrics..."
+curl -sSf -H "X-API-Key: $API_KEY" "$API_BASE/v1/metrics" | jq .totals || true

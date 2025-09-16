@@ -187,4 +187,16 @@ export async function deleteAsset(baseUrl: string, apiKey: string, args: { id?: 
 	return z.object({ ok: z.boolean() }).parse(j)
 }
 
+export async function deleteGeneration(baseUrl: string, apiKey: string, id: string) {
+	const r = await fetch(`${baseUrl}/v1/generations/${id}`, { method: 'DELETE', headers: headers(apiKey) })
+	const j = await r.json()
+	return z.object({ ok: z.boolean(), deletedAssets: z.number().optional() }).parse(j)
+}
+
+export async function getMetrics(baseUrl: string, apiKey: string) {
+	const r = await fetch(`${baseUrl}/v1/metrics`, { headers: headers(apiKey) })
+	const j = await r.json()
+	return z.object({ totals: z.object({ generations: z.number(), assets: z.number(), events: z.number(), explains: z.number() }), generationsByStatus: z.object({ succeeded: z.number(), failed: z.number(), queued: z.number() }) }).parse(j)
+}
+
 export type { z } from 'zod'

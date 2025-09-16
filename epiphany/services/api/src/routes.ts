@@ -301,4 +301,39 @@ r.delete('/assets', async (req, res) => {
 	res.json({ ok: true })
 })
 
+r.delete('/generations/:id', async (req, res) => {
+	const id = String(req.params.id)
+	const gen = await prisma.generation.findUnique({ where: { id } }).catch(() => null)
+	if (!gen) return res.status(404).json({ error: 'not_found' })
+	let deletedAssets = 0
+	const urls: string[] = []
+	if (gen.outputUrl) urls.push(gen.outputUrl)
+	if (Array.isArray(gen.previewUrls)) urls.push(...gen.previewUrls)
+	for (const u of urls) {
+		try {
+			const { deleteObjectByUrl } = await import('./s3')
+			await deleteObjectByUrl(u)
+			deletedAssets++
+			await prisma.asset.deleteMany({ where: { url: u } })
+		} catch {}
+	}
+	await prisma.explain.deleteMany({ where: { generationId: id } })
+	await prisma.event.deleteMany({ where: { generationId: id } })
+	await prisma.generation.delete({ where: { id } })
+	res.json({ ok: true, deletedAssets })
+})
+
+r.get('/metrics', async (_req, res) => {
+	const [genCount, assetCount, eventCount, explainCount, genSucceeded, genFailed, genQueued] = await Promise.all([
+		prisma.generation.count(),
+		prisma.asset.count(),
+		prisma.event.count(),
+		prisma.explain.count(),
+		prisma.generation.count({ where: { status: 'succeeded' } as any }),
+		prisma.generation.count({ where: { status: 'failed' } as any }),
+		prisma.generation.count({ where: { status: 'queued' } as any }),
+	])
+	res.json({ totals: { generations: genCount, assets: assetCount, events: eventCount, explains: explainCount }, generationsByStatus: { succeeded: genSucceeded, failed: genFailed, queued: genQueued } })
+})
+
 export const routes = r
