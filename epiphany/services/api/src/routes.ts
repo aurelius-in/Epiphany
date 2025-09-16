@@ -10,13 +10,13 @@ import { getSignedPutUrl, publicUrlFor } from './s3'
 const env = getEnv()
 const r = Router()
 
-function maybeSign(url?: string | null, signed?: boolean): string | undefined {
+function maybeSign(url?: string | null, signed?: boolean, ttlSec?: number): string | undefined {
 	if (!url) return undefined
 	if (!signed) return url || undefined
 	try {
 		const prefix = `${env.S3_ENDPOINT?.replace(/\/$/, '')}/${env.S3_BUCKET}`
 		const key = url.replace(prefix + '/', '')
-		return getSignedUrl(key)
+		return getSignedUrl(key, ttlSec || 3600)
 	} catch {
 		return url || undefined
 	}
@@ -162,6 +162,7 @@ r.post('/upload-url', async (req, res) => {
 r.get('/jobs/:id', async (req, res) => {
 	const id = req.params.id
 	const signed = String(req.query.signed || '0') === '1'
+	const ttl = parseInt(String(req.query.ttl || '0')) || undefined
 	async function statusOf(qname: keyof typeof queues): Promise<Job | null> {
 		return queues[qname].getJob(id)
 	}
@@ -174,7 +175,7 @@ r.get('/jobs/:id', async (req, res) => {
 	const statusMap: Record<string,string> = { waiting: 'queued', delayed: 'queued', active: 'running', completed: 'succeeded', failed: 'failed', paused: 'queued' }
 	const outputUrl = result?.output_url
 	const previewUrls = Array.isArray(result?.preview_urls) ? result.preview_urls : undefined
-	res.json({ id, status: statusMap[state] || state, progress, outputUrl: signed ? maybeSign(outputUrl, true) : outputUrl, previewUrls: signed && previewUrls ? previewUrls.map((u: string) => maybeSign(u, true)) : previewUrls, explainId: result?.explain_id, caption: result?.caption, error: failedReason })
+	res.json({ id, status: statusMap[state] || state, progress, outputUrl: signed ? maybeSign(outputUrl, true, ttl) : outputUrl, previewUrls: signed && previewUrls ? previewUrls.map((u: string) => maybeSign(u, true, ttl)) : previewUrls, explainId: result?.explain_id, caption: result?.caption, error: failedReason })
 })
 
 r.get('/jobs/:id/stream', async (req, res) => {
@@ -229,13 +230,14 @@ r.get('/generations', async (req, res) => {
 	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
 	const limit = Math.max(1, Math.min(100, parseInt(String(req.query.limit || '50')) || 50))
 	const signed = String(req.query.signed || '0') === '1'
+	const ttl = parseInt(String(req.query.ttl || '0')) || undefined
 	const items = await prisma.generation.findMany({ orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
 	const nextPage = items.length === limit ? page + 1 : undefined
 	const mapped = items.map((g: any) => {
 		return {
 			...g,
-			outputUrl: signed ? maybeSign(g.outputUrl, true) : g.outputUrl,
-			previewUrls: signed && Array.isArray(g.previewUrls) ? g.previewUrls.map((u: string) => maybeSign(u, true)) : g.previewUrls,
+			outputUrl: signed ? maybeSign(g.outputUrl, true, ttl) : g.outputUrl,
+			previewUrls: signed && Array.isArray(g.previewUrls) ? g.previewUrls.map((u: string) => maybeSign(u, true, ttl)) : g.previewUrls,
 		}
 	})
 	res.json({ items: mapped, nextPage })
@@ -244,9 +246,10 @@ r.get('/generations', async (req, res) => {
 r.get('/generations/:id', async (req, res) => {
 	const id = String(req.params.id)
 	const signed = String(req.query.signed || '0') === '1'
+	const ttl = parseInt(String(req.query.ttl || '0')) || undefined
 	const gen = await prisma.generation.findUnique({ where: { id } }).catch(() => null)
 	if (!gen) return res.status(404).json({ error: 'not_found' })
-	const out = { ...gen, outputUrl: signed ? maybeSign(gen.outputUrl || undefined, true) : gen.outputUrl, previewUrls: signed && Array.isArray(gen.previewUrls) ? gen.previewUrls.map(u => maybeSign(u, true)) : gen.previewUrls }
+	const out = { ...gen, outputUrl: signed ? maybeSign(gen.outputUrl || undefined, true, ttl) : gen.outputUrl, previewUrls: signed && Array.isArray(gen.previewUrls) ? gen.previewUrls.map(u => maybeSign(u, true, ttl)) : gen.previewUrls }
 	res.json(out)
 })
 
@@ -282,9 +285,10 @@ r.get('/assets', async (req, res) => {
 	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
 	const limit = Math.max(1, Math.min(200, parseInt(String(req.query.limit || '100')) || 100))
 	const signed = String(req.query.signed || '0') === '1'
+	const ttl = parseInt(String(req.query.ttl || '0')) || undefined
 	const items = await prisma.asset.findMany({ orderBy: { id: 'desc' as any }, skip: (page - 1) * limit, take: limit })
 	const nextPage = items.length === limit ? page + 1 : undefined
-	const mapped = items.map((a: any) => ({ ...a, url: signed ? maybeSign(a.url, true) : a.url }))
+	const mapped = items.map((a: any) => ({ ...a, url: signed ? maybeSign(a.url, true, ttl) : a.url }))
 	res.json({ items: mapped, nextPage })
 })
 
