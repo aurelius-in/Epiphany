@@ -82,6 +82,12 @@ _gfpgan_available = False
 try:  # lazy optional wrappers; will be instantiated on demand
 	from realesrgan import RealESRGAN  # type: ignore
 	import torch  # type: ignore
+	# Enable cuDNN autotune on CUDA
+	try:
+		if torch.cuda.is_available():
+			torch.backends.cudnn.benchmark = True
+	except Exception:
+		pass
 	_realesrgan_available = True
 except Exception:
 	_realesrgan_available = False
@@ -106,7 +112,10 @@ async def upscale(request: Request):
 	# Try RealESRGAN if available and scale is 4
 	if _realesrgan_available and scale in (2,4):
 		try:
-			device = 'cuda' if 'CUDA_VISIBLE_DEVICES' in os.environ else 'cpu'
+			device_env = os.getenv('TORCH_DEVICE', '').strip().lower()
+			if device_env in ('cuda','gpu') and 'CUDA_VISIBLE_DEVICES' not in os.environ:
+				os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+			device = 'cuda' if (device_env in ('cuda','gpu')) or ('CUDA_VISIBLE_DEVICES' in os.environ) or ('TORCH_CUDA' in os.environ) or (hasattr(torch, 'cuda') and torch.cuda.is_available()) else 'cpu'
 			model = RealESRGAN(torch.device(device), scale)
 			# model weights load is environment-dependent; guard with try/except
 			try:
@@ -130,6 +139,9 @@ async def restore_face(request: Request):
 	# Try GFPGAN if available
 	if _gfpgan_available:
 		try:
+			device_env = os.getenv('TORCH_DEVICE', '').strip().lower()
+			if device_env in ('cuda','gpu') and 'CUDA_VISIBLE_DEVICES' not in os.environ:
+				os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 			restorer = GFPGANer(model_path=None, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None)
 			_, _, restored = restorer.enhance(im.convert('RGB'), has_aligned=False, only_center_face=False, paste_back=True)
 			res = restored.convert('RGBA') if hasattr(restored, 'convert') else res

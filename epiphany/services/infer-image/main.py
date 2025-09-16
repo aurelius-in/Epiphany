@@ -25,6 +25,12 @@ try:
     from diffusers import StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline
     from diffusers import ControlNetModel, StableDiffusionXLControlNetPipeline
     import torch
+    # Enable cuDNN autotune on CUDA
+    try:
+        if torch.cuda.is_available():
+            torch.backends.cudnn.benchmark = True
+    except Exception:
+        pass
     _diffusers_available = True
 except Exception:
     _diffusers_available = False
@@ -122,7 +128,11 @@ def load_pipe():
     if not _diffusers_available:
         return None
     try:
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        # Honor TORCH_DEVICE and CUDA_VISIBLE_DEVICES
+        device_env = os.getenv('TORCH_DEVICE', '').strip().lower()
+        if device_env in ('cuda','gpu') and 'CUDA_VISIBLE_DEVICES' not in os.environ:
+            os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+        device = 'cuda' if (device_env in ('cuda','gpu')) or (hasattr(torch, 'cuda') and torch.cuda.is_available()) else 'cpu'
         _pipe = StableDiffusionXLPipeline.from_pretrained(
             os.getenv('SDXL_MODEL', 'stabilityai/stable-diffusion-xl-base-1.0'),
             torch_dtype=torch.float16 if device == 'cuda' else torch.float32
@@ -150,7 +160,10 @@ def try_img2img_with_diffusers(prompt: str, init_bytes: bytes | None, strength: 
     if not _diffusers_available or not init_bytes:
         return None
     try:
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        device_env = os.getenv('TORCH_DEVICE', '').strip().lower()
+        if device_env in ('cuda','gpu') and 'CUDA_VISIBLE_DEVICES' not in os.environ:
+            os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+        device = 'cuda' if (device_env in ('cuda','gpu')) or (hasattr(torch, 'cuda') and torch.cuda.is_available()) else 'cpu'
         pipe = StableDiffusionXLImg2ImgPipeline.from_pretrained(os.getenv('SDXL_MODEL', 'stabilityai/stable-diffusion-xl-base-1.0'))
         if device == 'cuda':
             pipe = pipe.to(device)
@@ -166,7 +179,10 @@ def try_inpaint_with_diffusers(prompt: str, init_bytes: bytes | None, mask_bytes
     if not _diffusers_available or not init_bytes or not mask_bytes:
         return None
     try:
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        device_env = os.getenv('TORCH_DEVICE', '').strip().lower()
+        if device_env in ('cuda','gpu') and 'CUDA_VISIBLE_DEVICES' not in os.environ:
+            os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+        device = 'cuda' if (device_env in ('cuda','gpu')) or (hasattr(torch, 'cuda') and torch.cuda.is_available()) else 'cpu'
         pipe = StableDiffusionXLInpaintPipeline.from_pretrained(os.getenv('SDXL_INPAINT_MODEL', 'diffusers/stable-diffusion-xl-1.0-inpainting-0.1'))
         if device == 'cuda':
             pipe = pipe.to(device)
@@ -188,7 +204,10 @@ def try_controlnet_canny_with_diffusers(prompt: str, ctrl_bytes: bytes | None, s
 		from PIL import Image as PILImage
 		import cv2  # type: ignore
 		import numpy as np
-		device = 'cuda' if torch.cuda.is_available() else 'cpu'
+		device_env = os.getenv('TORCH_DEVICE', '').strip().lower()
+		if device_env in ('cuda','gpu') and 'CUDA_VISIBLE_DEVICES' not in os.environ:
+			os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+		device = 'cuda' if (device_env in ('cuda','gpu')) or (hasattr(torch, 'cuda') and torch.cuda.is_available()) else 'cpu'
 		# Prepare canny edge image
 		im = PILImage.open(BytesIO(ctrl_bytes)).convert('RGB').resize((width, height))
 		arr = np.array(im)
@@ -224,7 +243,10 @@ def try_controlnet_depth_with_diffusers(prompt: str, ctrl_bytes: bytes | None, s
 			# fallback: grayscale as pseudo depth
 			im = PILImage.open(BytesIO(ctrl_bytes)).convert('L').resize((width, height))
 			depth_im = im.convert('RGB')
-		device = 'cuda' if torch.cuda.is_available() else 'cpu'
+		device_env = os.getenv('TORCH_DEVICE', '').strip().lower()
+		if device_env in ('cuda','gpu') and 'CUDA_VISIBLE_DEVICES' not in os.environ:
+			os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+		device = 'cuda' if (device_env in ('cuda','gpu')) or (hasattr(torch, 'cuda') and torch.cuda.is_available()) else 'cpu'
 		cn = ControlNetModel.from_pretrained(os.getenv('SDXL_CN_DEPTH_MODEL', 'lllyasviel/sd-controlnet-depth'))
 		pipe = StableDiffusionXLControlNetPipeline.from_pretrained(os.getenv('SDXL_MODEL', 'stabilityai/stable-diffusion-xl-base-1.0'), controlnet=cn)
 		if device == 'cuda':
@@ -250,7 +272,10 @@ def try_controlnet_pose_with_diffusers(prompt: str, ctrl_bytes: bytes | None, st
 		except Exception:
 			# fallback: use the original image
 			pose_im = PILImage.open(BytesIO(ctrl_bytes)).convert('RGB').resize((width, height))
-		device = 'cuda' if torch.cuda.is_available() else 'cpu'
+		device_env = os.getenv('TORCH_DEVICE', '').strip().lower()
+		if device_env in ('cuda','gpu') and 'CUDA_VISIBLE_DEVICES' not in os.environ:
+			os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+		device = 'cuda' if (device_env in ('cuda','gpu')) or (hasattr(torch, 'cuda') and torch.cuda.is_available()) else 'cpu'
 		cn = ControlNetModel.from_pretrained(os.getenv('SDXL_CN_POSE_MODEL', 'lllyasviel/sd-controlnet-openpose'))
 		pipe = StableDiffusionXLControlNetPipeline.from_pretrained(os.getenv('SDXL_MODEL', 'stabilityai/stable-diffusion-xl-base-1.0'), controlnet=cn)
 		if device == 'cuda':
