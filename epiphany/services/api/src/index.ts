@@ -49,6 +49,8 @@ app.get('/v1/health', async (_req, res) => {
 	res.json(summary)
 })
 
+app.head('/v1/healthz', (_req, res) => res.status(200).end())
+
 app.get('/v1/version', (_req, res) => {
 	res.json({ name: 'epiphany', version: process.env.npm_package_version || '0.1.0' })
 })
