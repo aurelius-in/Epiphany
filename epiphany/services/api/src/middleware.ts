@@ -30,8 +30,12 @@ export function tinyRateLimit(maxPerWindow = 120, windowMs = 60_000) {
 		res.setHeader('X-RateLimit-Limit', String(maxPerWindow))
 		res.setHeader('X-RateLimit-Window', String(windowMs))
 		res.setHeader('X-RateLimit-Remaining', String(remaining))
-		res.setHeader('X-RateLimit-Reset', String(Math.max(0, cur.resetAt - now)))
-		if (cur.count > maxPerWindow) return res.status(429).json({ error: 'rate_limited' })
+		const resetMs = Math.max(0, cur.resetAt - now)
+		res.setHeader('X-RateLimit-Reset', String(resetMs))
+		if (cur.count > maxPerWindow) {
+			res.setHeader('Retry-After', String(Math.ceil(resetMs/1000)))
+			return res.status(429).json({ error: 'rate_limited' })
+		}
 		next()
 	}
 }
