@@ -69,11 +69,13 @@ Headers: `X-API-Key: <string>`, `Content-Type: application/json`
 - POST `/v1/generate/video` → text→video, animate, stylize
 - POST `/v1/edit/*` → upscale, restore-face, remove-bg, crop, resize, caption
 - GET  `/v1/jobs/:id` → `{ status, progress, outputUrl, previewUrls[], explainId, caption }`
+- GET  `/v1/jobs/:id/stream` → Server-Sent Events for live progress
 - GET  `/v1/generations` → recent history (paginated)
 - GET  `/v1/explain/:id` → token scores + heatmap URLs
+- GET  `/v1/events` → recent events (filter by `generationId`)
 - GET  `/v1/health` → `{ ok, services:{db,redis,s3,infer_image,infer_video,edit,explain} }`
 
-All request/response bodies are typed and validated with Zod (SDK included).
+All request/response bodies are typed and validated with Zod (SDK included). SSE is supported for job progress.
 
 ---
 

@@ -18,3 +18,9 @@ infer-image:
 
 buckets:
 	bash epiphany/ops/scripts/minio-buckets.sh
+
+smoke:
+	bash epiphany/ops/scripts/smoke.sh
+
+smoke.ps:
+	powershell -ExecutionPolicy Bypass -File epiphany/ops/scripts/smoke.ps1
