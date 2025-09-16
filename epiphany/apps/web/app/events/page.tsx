@@ -12,12 +12,15 @@ export default function EventsPage() {
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [genId, setGenId] = useState('')
+	const [types, setTypes] = useState<string[]>([])
+	const [type, setType] = useState<string>('')
 
 	async function load(p = 1) {
 		setLoading(true)
 		try {
 			const q = new URLSearchParams({ page: String(p), limit: '100' })
 			if (genId) q.set('generationId', genId)
+			if (type) q.set('type', type)
 			const res = await fetch(`/api/proxy/v1/events?${q.toString()}`)
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
 			const data: ListRes = await res.json()
@@ -32,12 +35,17 @@ export default function EventsPage() {
 	}
 
 	useEffect(() => { load(1) }, [])
+	useEffect(() => { (async () => { try { const r = await fetch('/api/proxy/v1/event-types'); const j = await r.json(); setTypes(j.types || []) } catch {} })() }, [])
 
 	return (
 		<div style={{padding:16}}>
 			<h1 style={{marginBottom:12}}>Events</h1>
 			<div style={{display:'flex', gap:8, alignItems:'center', marginBottom:12}}>
 				<input placeholder="Filter by generationId" value={genId} onChange={e=>setGenId(e.target.value)} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}} />
+				<select value={type} onChange={e=>setType(e.target.value)} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>
+					<option value="">All types</option>
+					{types.map(t => <option key={t} value={t}>{t}</option>)}
+				</select>
 				<button onClick={()=>load(1)} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Apply</button>
 			</div>
 			{loading && page === 1 && <div>Loading…</div>}

@@ -45,7 +45,7 @@ export default function AssetsPage() {
 						)}
 						<div style={{padding:8, fontSize:12, color:'#a4a4ad', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
 							<div>{a.kind} • {a.mime}</div>
-							<button onClick={async (e)=>{e.preventDefault(); try{ await fetch('/api/proxy/v1/assets', { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: a.id }) }); await load(1); }catch{}}} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'6px 10px', borderRadius:8}}>Delete</button>
+							<button onClick={async (e)=>{e.preventDefault(); if (!confirm('Delete this asset?')) return; try{ await fetch('/api/proxy/v1/assets', { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: a.id }) }); await load(1); }catch{}}} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'6px 10px', borderRadius:8}}>Delete</button>
 						</div>
 					</div>
 				))}

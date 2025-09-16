@@ -100,6 +100,8 @@ export default function GalleryPage() {
 								{it.safety && <span style={{border:'1px solid #26262a', padding:'2px 6px', borderRadius:8}}>{safetyLabel(it.safety)}</span>}
 								<a href={recreateHref(it)} style={{color:'#cfd0ff'}}>Recreate</a>
 								<a href={`/generations/${it.id}`} style={{color:'#cfd0ff'}}>Details</a>
+								<button onClick={async (e)=>{ e.preventDefault(); try { await fetch(`/api/proxy/v1/jobs/by-generation/${it.id}/cancel`, { method:'POST' }); } catch {} }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'4px 8px', borderRadius:8}}>Cancel</button>
+								<button onClick={async (e)=>{ e.preventDefault(); try { const r = await fetch(`/api/proxy/v1/retry/${it.id}`, { method:'POST' }); const j = await r.json(); if (j?.generationId) location.href = `/generations/${j.generationId}` } catch {} }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'4px 8px', borderRadius:8}}>Retry</button>
 							</div>
 						</div>
 					</div>

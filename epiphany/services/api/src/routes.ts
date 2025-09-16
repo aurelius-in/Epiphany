@@ -282,12 +282,21 @@ r.post('/explain/:id/refresh', async (req, res) => {
 
 r.get('/events', async (req, res) => {
 	const generationId = req.query.generationId ? String(req.query.generationId) : undefined
+	const type = req.query.type ? String(req.query.type) : undefined
 	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
 	const limit = Math.max(1, Math.min(200, parseInt(String(req.query.limit || '100')) || 100))
-	const where = generationId ? { generationId } : {}
-	const items = await prisma.event.findMany({ where: where as any, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
+	const where: any = {}
+	if (generationId) where.generationId = generationId
+	if (type) where.type = type
+	const items = await prisma.event.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
 	const nextPage = items.length === limit ? page + 1 : undefined
 	res.json({ items, nextPage })
+})
+
+r.get('/event-types', async (_req, res) => {
+	const rows = await (prisma as any).$queryRawUnsafe(`SELECT DISTINCT "type" FROM "Event" ORDER BY 1`)
+	const types = Array.isArray(rows) ? rows.map((r: any) => r.type) : []
+	res.json({ types })
 })
 
 r.get('/assets', async (req, res) => {
