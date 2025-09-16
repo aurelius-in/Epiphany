@@ -201,6 +201,28 @@
   </script>
 
   <script>
+    (function enableDnD(){
+      const initEl = document.getElementById('initFile');
+      const maskEl = document.getElementById('maskFile');
+      function prevent(e){ e.preventDefault(); e.stopPropagation(); }
+      ['dragenter','dragover','dragleave','drop'].forEach(ev => document.addEventListener(ev, prevent, false));
+      document.addEventListener('dragover', () => document.body.classList.add('dragging'), false);
+      document.addEventListener('dragleave', () => document.body.classList.remove('dragging'), false);
+      document.addEventListener('drop', (e) => {
+        document.body.classList.remove('dragging');
+        const dt = e.dataTransfer; if (!dt || !dt.files || !dt.files.length) return;
+        const file = dt.files[0];
+        if (!file || !file.type.startsWith('image/')) return;
+        if (e.shiftKey && maskEl) {
+          const d = new DataTransfer(); d.items.add(file); maskEl.files = d.files;
+        } else if (initEl) {
+          const d = new DataTransfer(); d.items.add(file); initEl.files = d.files;
+        }
+      }, false);
+    })();
+  </script>
+
+  <script>
     (async function showVersion(){
       try{
         const r = await fetch('/api/proxy/v1/version');
