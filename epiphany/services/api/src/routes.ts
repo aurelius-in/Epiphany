@@ -269,4 +269,14 @@ r.get('/events', async (req, res) => {
 	res.json({ items, nextPage })
 })
 
+r.get('/assets', async (req, res) => {
+	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
+	const limit = Math.max(1, Math.min(200, parseInt(String(req.query.limit || '100')) || 100))
+	const signed = String(req.query.signed || '0') === '1'
+	const items = await prisma.asset.findMany({ orderBy: { id: 'desc' as any }, skip: (page - 1) * limit, take: limit })
+	const nextPage = items.length === limit ? page + 1 : undefined
+	const mapped = items.map((a: any) => ({ ...a, url: signed ? maybeSign(a.url, true) : a.url }))
+	res.json({ items: mapped, nextPage })
+})
+
 export const routes = r
