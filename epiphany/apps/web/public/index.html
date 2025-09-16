@@ -310,7 +310,8 @@
         const bFace = mk('btnFace','Restore Face');
         const bCaption = mk('btnCaption','Caption');
         const bDownload = mk('btnDownload','Download');
-        wrap.append(bUpscale,bRemBG,bFace,bCaption,bDownload);
+        const bCancel = mk('btnCancel','Cancel Job');
+        wrap.append(bUpscale,bRemBG,bFace,bCaption,bDownload,bCancel);
         resultMeta.appendChild(wrap);
 
         bUpscale.addEventListener('click', async () => {
@@ -349,6 +350,10 @@
           a.href = url; a.download = 'epiphany.png';
           document.body.appendChild(a); a.click(); a.remove();
         });
+        bCancel.addEventListener('click', async () => {
+          if (!window.lastJobId) return;
+          try { await postJson(`${API_BASE}/v1/jobs/${window.lastJobId}/cancel`, {}); } catch {}
+        });
       }
 
       async function onGenerate(){
@@ -367,6 +372,7 @@
             preview: false,
           };
           const j = await postJson(`${API_BASE}/v1/generate/image`, body);
+          window.lastJobId = j.id;
           const st = await pollJob(j.id);
           if (st.outputUrl){
             resultBody.innerHTML = '';
