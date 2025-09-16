@@ -143,6 +143,10 @@
           <label class="field-label" for="initFile">Init Image (optional)</label>
           <input id="initFile" type="file" accept="image/*" class="input" />
         </div>
+        <div>
+          <label class="field-label" for="maskFile">Mask (optional)</label>
+          <input id="maskFile" type="file" accept="image/*" class="input" />
+        </div>
       </div>
 
       <div class="actions">
@@ -318,6 +322,7 @@
       const genBtn = document.getElementById('btnGenerate');
       const genVideoBtn = document.getElementById('btnGenerateVideo');
       const initFile = document.getElementById('initFile');
+      const maskFile = document.getElementById('maskFile');
       const resultImg = document.getElementById('resultImg');
       const resultBody = document.getElementById('resultBody');
       const resultMeta = document.getElementById('resultMeta');
@@ -334,6 +339,15 @@
       }
       async function uploadInitIfAny() {
         const f = (initFile && initFile.files && initFile.files[0]) ? initFile.files[0] : null;
+        if (!f) return null;
+        const up = await postJson(`${API_BASE}/v1/upload-url`, { key: undefined, contentType: f.type || 'application/octet-stream' });
+        const putRes = await fetch(up.putUrl, { method: 'PUT', headers: { 'Content-Type': f.type || 'application/octet-stream' }, body: f });
+        if (!putRes.ok) throw new Error('upload failed ' + putRes.status);
+        return up.publicUrl;
+      }
+
+      async function uploadMaskIfAny() {
+        const f = (maskFile && maskFile.files && maskFile.files[0]) ? maskFile.files[0] : null;
         if (!f) return null;
         const up = await postJson(`${API_BASE}/v1/upload-url`, { key: undefined, contentType: f.type || 'application/octet-stream' });
         const putRes = await fetch(up.putUrl, { method: 'PUT', headers: { 'Content-Type': f.type || 'application/octet-stream' }, body: f });
@@ -436,6 +450,7 @@
           ensureEditButtons();
           resultBody.innerHTML = '<div class="result-placeholder">Generating…</div>';
           const initUrl = await uploadInitIfAny().catch(()=>null);
+          const maskUrl = await uploadMaskIfAny().catch(()=>null);
           const body = {
             prompt: String(promptEl.value || '').slice(0,2000),
             mode: Number(modeRange.value || 0),
@@ -447,6 +462,7 @@
             modelId: mapModel(modelEl.value),
             preview: false,
             initImageUrl: initUrl || undefined,
+            maskUrl: maskUrl || undefined,
           };
           const j = await postJson(`${API_BASE}/v1/generate/image`, body);
           window.lastJobId = j.id;
