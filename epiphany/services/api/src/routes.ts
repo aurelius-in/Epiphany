@@ -10,13 +10,13 @@ import { getSignedPutUrl, publicUrlFor } from './s3'
 const env = getEnv()
 const r = Router()
 
-function maybeSign(url?: string | null, signed?: boolean): string | undefined {
+function maybeSign(url?: string | null, signed?: boolean, ttlSec?: number): string | undefined {
 	if (!url) return undefined
 	if (!signed) return url || undefined
 	try {
 		const prefix = `${env.S3_ENDPOINT?.replace(/\/$/, '')}/${env.S3_BUCKET}`
 		const key = url.replace(prefix + '/', '')
-		return getSignedUrl(key)
+		return getSignedUrl(key, ttlSec || 3600)
 	} catch {
 		return url || undefined
 	}
@@ -162,6 +162,7 @@ r.post('/upload-url', async (req, res) => {
 r.get('/jobs/:id', async (req, res) => {
 	const id = req.params.id
 	const signed = String(req.query.signed || '0') === '1'
+	const ttl = parseInt(String(req.query.ttl || '0')) || undefined
 	async function statusOf(qname: keyof typeof queues): Promise<Job | null> {
 		return queues[qname].getJob(id)
 	}
@@ -174,7 +175,7 @@ r.get('/jobs/:id', async (req, res) => {
 	const statusMap: Record<string,string> = { waiting: 'queued', delayed: 'queued', active: 'running', completed: 'succeeded', failed: 'failed', paused: 'queued' }
 	const outputUrl = result?.output_url
 	const previewUrls = Array.isArray(result?.preview_urls) ? result.preview_urls : undefined
-	res.json({ id, status: statusMap[state] || state, progress, outputUrl: signed ? maybeSign(outputUrl, true) : outputUrl, previewUrls: signed && previewUrls ? previewUrls.map((u: string) => maybeSign(u, true)) : previewUrls, explainId: result?.explain_id, caption: result?.caption, error: failedReason })
+	res.json({ id, status: statusMap[state] || state, progress, outputUrl: signed ? maybeSign(outputUrl, true, ttl) : outputUrl, previewUrls: signed && previewUrls ? previewUrls.map((u: string) => maybeSign(u, true, ttl)) : previewUrls, explainId: result?.explain_id, caption: result?.caption, error: failedReason })
 })
 
 r.get('/jobs/:id/stream', async (req, res) => {
@@ -225,17 +226,30 @@ r.post('/jobs/:id/cancel', async (req, res) => {
 	res.json({ id, cancelled: true })
 })
 
+r.delete('/jobs/:id', async (req, res) => {
+	const id = String(req.params.id)
+	let removed = false
+	for (const q of Object.values(queues)) {
+		const j = await (q as any).getJob(id)
+		if (j) {
+			try { await j.remove(); removed = true } catch {}
+		}
+	}
+	res.json({ id, removed })
+})
+
 r.get('/generations', async (req, res) => {
 	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
 	const limit = Math.max(1, Math.min(100, parseInt(String(req.query.limit || '50')) || 50))
 	const signed = String(req.query.signed || '0') === '1'
+	const ttl = parseInt(String(req.query.ttl || '0')) || undefined
 	const items = await prisma.generation.findMany({ orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
 	const nextPage = items.length === limit ? page + 1 : undefined
 	const mapped = items.map((g: any) => {
 		return {
 			...g,
-			outputUrl: signed ? maybeSign(g.outputUrl, true) : g.outputUrl,
-			previewUrls: signed && Array.isArray(g.previewUrls) ? g.previewUrls.map((u: string) => maybeSign(u, true)) : g.previewUrls,
+			outputUrl: signed ? maybeSign(g.outputUrl, true, ttl) : g.outputUrl,
+			previewUrls: signed && Array.isArray(g.previewUrls) ? g.previewUrls.map((u: string) => maybeSign(u, true, ttl)) : g.previewUrls,
 		}
 	})
 	res.json({ items: mapped, nextPage })
@@ -244,9 +258,10 @@ r.get('/generations', async (req, res) => {
 r.get('/generations/:id', async (req, res) => {
 	const id = String(req.params.id)
 	const signed = String(req.query.signed || '0') === '1'
+	const ttl = parseInt(String(req.query.ttl || '0')) || undefined
 	const gen = await prisma.generation.findUnique({ where: { id } }).catch(() => null)
 	if (!gen) return res.status(404).json({ error: 'not_found' })
-	const out = { ...gen, outputUrl: signed ? maybeSign(gen.outputUrl || undefined, true) : gen.outputUrl, previewUrls: signed && Array.isArray(gen.previewUrls) ? gen.previewUrls.map(u => maybeSign(u, true)) : gen.previewUrls }
+	const out = { ...gen, outputUrl: signed ? maybeSign(gen.outputUrl || undefined, true, ttl) : gen.outputUrl, previewUrls: signed && Array.isArray(gen.previewUrls) ? gen.previewUrls.map(u => maybeSign(u, true, ttl)) : gen.previewUrls }
 	res.json(out)
 })
 
@@ -268,24 +283,248 @@ r.get('/explain/:id', async (req, res) => {
 	return res.status(404).json({ error: 'not_found' })
 })
 
+r.post('/explain/:id/refresh', async (req, res) => {
+	const id = String(req.params.id)
+	let generationId = id
+	const ex = await prisma.explain.findUnique({ where: { id } }).catch(() => null)
+	if (ex) generationId = ex.generationId
+	const job = await queues.explain.add('explain', { generationId }, { removeOnComplete: true, removeOnFail: true })
+	res.json({ id: job.id, generationId })
+})
+
 r.get('/events', async (req, res) => {
 	const generationId = req.query.generationId ? String(req.query.generationId) : undefined
+	const type = req.query.type ? String(req.query.type) : undefined
 	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
 	const limit = Math.max(1, Math.min(200, parseInt(String(req.query.limit || '100')) || 100))
-	const where = generationId ? { generationId } : {}
-	const items = await prisma.event.findMany({ where: where as any, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
+	const where: any = {}
+	if (generationId) where.generationId = generationId
+	if (type) where.type = type
+	const items = await prisma.event.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
 	const nextPage = items.length === limit ? page + 1 : undefined
 	res.json({ items, nextPage })
+})
+
+r.get('/event-types', async (_req, res) => {
+	const rows = await (prisma as any).$queryRawUnsafe(`SELECT DISTINCT "type" FROM "Event" ORDER BY 1`)
+	const types = Array.isArray(rows) ? rows.map((r: any) => r.type) : []
+	res.json({ types })
 })
 
 r.get('/assets', async (req, res) => {
 	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
 	const limit = Math.max(1, Math.min(200, parseInt(String(req.query.limit || '100')) || 100))
 	const signed = String(req.query.signed || '0') === '1'
+	const ttl = parseInt(String(req.query.ttl || '0')) || undefined
 	const items = await prisma.asset.findMany({ orderBy: { id: 'desc' as any }, skip: (page - 1) * limit, take: limit })
 	const nextPage = items.length === limit ? page + 1 : undefined
-	const mapped = items.map((a: any) => ({ ...a, url: signed ? maybeSign(a.url, true) : a.url }))
+	const mapped = items.map((a: any) => ({ ...a, url: signed ? maybeSign(a.url, true, ttl) : a.url }))
 	res.json({ items: mapped, nextPage })
+})
+
+r.get('/assets/:id', async (req, res) => {
+	const id = String(req.params.id)
+	const a = await prisma.asset.findUnique({ where: { id } }).catch(() => null)
+	if (!a) return res.status(404).json({ error: 'not_found' })
+	res.json(a)
+})
+
+r.head('/assets/:id', async (req, res) => {
+	const id = String(req.params.id)
+	const a = await prisma.asset.findUnique({ where: { id } }).catch(() => null)
+	if (!a) return res.status(404).end()
+	res.status(200).end()
+})
+
+r.delete('/assets', async (req, res) => {
+	const body = z.object({ id: z.string().optional(), url: z.string().url().optional() }).parse(req.body || {})
+	let where: any = {}
+	if (body.id) where.id = body.id
+	if (body.url) where.url = body.url
+	if (!where.id && !where.url) return res.status(400).json({ error: 'missing_id_or_url' })
+	const asset = await prisma.asset.findFirst({ where }).catch(() => null)
+	if (!asset) return res.status(404).json({ error: 'not_found' })
+	try { await (await import('./s3')).deleteObjectByUrl(asset.url) } catch {}
+	await prisma.asset.delete({ where: { id: asset.id } })
+	res.json({ ok: true })
+})
+
+r.delete('/generations/:id', async (req, res) => {
+	const id = String(req.params.id)
+	const gen = await prisma.generation.findUnique({ where: { id } }).catch(() => null)
+	if (!gen) return res.status(404).json({ error: 'not_found' })
+	let deletedAssets = 0
+	const urls: string[] = []
+	if (gen.outputUrl) urls.push(gen.outputUrl)
+	if (Array.isArray(gen.previewUrls)) urls.push(...gen.previewUrls)
+	for (const u of urls) {
+		try {
+			const { deleteObjectByUrl } = await import('./s3')
+			await deleteObjectByUrl(u)
+			deletedAssets++
+			await prisma.asset.deleteMany({ where: { url: u } })
+		} catch {}
+	}
+	await prisma.explain.deleteMany({ where: { generationId: id } })
+	await prisma.event.deleteMany({ where: { generationId: id } })
+	await prisma.generation.delete({ where: { id } })
+	res.json({ ok: true, deletedAssets })
+})
+
+r.get('/metrics', async (_req, res) => {
+	const [genCount, assetCount, eventCount, explainCount, genSucceeded, genFailed, genQueued] = await Promise.all([
+		prisma.generation.count(),
+		prisma.asset.count(),
+		prisma.event.count(),
+		prisma.explain.count(),
+		prisma.generation.count({ where: { status: 'succeeded' } as any }),
+		prisma.generation.count({ where: { status: 'failed' } as any }),
+		prisma.generation.count({ where: { status: 'queued' } as any }),
+	])
+	res.json({ totals: { generations: genCount, assets: assetCount, events: eventCount, explains: explainCount }, generationsByStatus: { succeeded: genSucceeded, failed: genFailed, queued: genQueued } })
+})
+
+r.get('/jobs/by-generation/:id', async (req, res) => {
+	const generationId = String(req.params.id)
+	for (const [name, q] of Object.entries(queues)) {
+		const jobs = await (q as any).getJobs(['waiting','delayed','active','completed','failed','paused'])
+		const found = jobs.find(j => j?.data?.generationId === generationId)
+		if (found) {
+			const state = await found.getState()
+			return res.json({ queue: name, id: found.id, state, progress: found.progress })
+		}
+	}
+	return res.status(404).json({ error: 'not_found' })
+})
+
+r.post('/jobs/by-generation/:id/cancel', async (req, res) => {
+	const generationId = String(req.params.id)
+	let cancelled = false
+	for (const q of Object.values(queues)) {
+		const jobs = await (q as any).getJobs(['waiting','delayed','active'])
+		for (const j of jobs) {
+			if (j?.data?.generationId === generationId) {
+				try { await j.remove(); cancelled = true } catch {}
+			}
+		}
+	}
+	if (cancelled) {
+		try {
+			await prisma.generation.update({ where: { id: generationId }, data: { status: 'canceled' } })
+			await prisma.event.create({ data: { generationId, type: 'canceled', payload: {} as any } })
+		} catch {}
+	}
+	res.json({ generationId, cancelled })
+})
+
+r.get('/queues', async (_req, res) => {
+	const out: any[] = []
+	for (const [name, q] of Object.entries(queues)) {
+		try {
+			const counts = await (q as any).getJobCounts('waiting','active','completed','failed','delayed','paused')
+			out.push({ name, counts })
+		} catch (e: any) {
+			out.push({ name, error: String(e?.message || e) })
+		}
+	}
+	res.json({ queues: out })
+})
+
+r.get('/errors', async (req, res) => {
+	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
+	const limit = Math.max(1, Math.min(100, parseInt(String(req.query.limit || '50')) || 50))
+	const items = await prisma.generation.findMany({ where: { status: 'failed' } as any, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
+	const nextPage = items.length === limit ? page + 1 : undefined
+	res.json({ items, nextPage })
+})
+
+r.post('/retry/:id', async (req, res) => {
+	const id = String(req.params.id)
+	const gen = await prisma.generation.findUnique({ where: { id } }).catch(() => null)
+	if (!gen) return res.status(404).json({ error: 'not_found' })
+	if (gen.kind === 'image') {
+		const data: any = {
+			prompt: gen.inputPrompt,
+			negativePrompt: gen.negativePrompt || undefined,
+			mode: gen.mode,
+			stylePreset: gen.stylePreset || undefined,
+			aspect: gen.aspect || undefined,
+			steps: gen.steps || undefined,
+			cfg: gen.cfg || undefined,
+			seed: gen.seed != null ? Number(gen.seed) : null,
+			modelId: gen.modelId || undefined,
+			controlnet: gen.controlnet || undefined,
+			initImageUrl: gen.initImageUrl || undefined,
+			maskUrl: gen.maskUrl || undefined,
+			preview: false,
+		}
+		const newGen = await prisma.generation.create({ data: {
+			...gen,
+			id: undefined as any,
+			status: 'queued',
+			outputUrl: null as any,
+			previewUrls: [],
+			durationMs: null as any,
+			modelHash: null as any,
+			safety: null as any,
+			error: null as any,
+			createdAt: undefined as any,
+			updatedAt: undefined as any,
+		} as any })
+		await prisma.event.create({ data: { generationId: newGen.id, type: 'retry', payload: { from: id } as any } })
+		const job = await queues.generate_image.add('generate', { ...data, generationId: newGen.id }, { removeOnComplete: true, removeOnFail: true })
+		return res.json({ id: job.id, generationId: newGen.id })
+	}
+	if (gen.kind === 'video') {
+		const data: any = {
+			prompt: gen.inputPrompt,
+			mode: gen.mode,
+			resolution: gen.aspect || undefined,
+			seed: gen.seed != null ? Number(gen.seed) : null,
+			modelId: gen.modelId || undefined,
+			sourceImageUrl: gen.initImageUrl || undefined,
+		}
+		const newGen = await prisma.generation.create({ data: {
+			...gen,
+			id: undefined as any,
+			status: 'queued',
+			outputUrl: null as any,
+			previewUrls: [],
+			durationMs: null as any,
+			modelHash: null as any,
+			safety: null as any,
+			error: null as any,
+			createdAt: undefined as any,
+			updatedAt: undefined as any,
+		} as any })
+		await prisma.event.create({ data: { generationId: newGen.id, type: 'retry', payload: { from: id } as any } })
+		const job = await queues.generate_video.add('generate', { ...data, generationId: newGen.id }, { removeOnComplete: true, removeOnFail: true })
+		return res.json({ id: job.id, generationId: newGen.id })
+	}
+	return res.status(400).json({ error: 'unsupported_kind' })
+})
+
+r.get('/assets/search', async (req, res) => {
+	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
+	const limit = Math.max(1, Math.min(200, parseInt(String(req.query.limit || '100')) || 100))
+	const kind = req.query.kind ? String(req.query.kind) : undefined
+	const mime = req.query.mime ? String(req.query.mime) : undefined
+	const where: any = {}
+	if (kind) where.kind = kind
+	if (mime) where.mime = mime
+	const items = await prisma.asset.findMany({ where, orderBy: { id: 'desc' as any }, skip: (page - 1) * limit, take: limit })
+	const nextPage = items.length === limit ? page + 1 : undefined
+	res.json({ items, nextPage })
+})
+
+r.get('/generations/search', async (req, res) => {
+	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
+	const limit = Math.max(1, Math.min(100, parseInt(String(req.query.limit || '50')) || 50))
+	const q = String(req.query.q || '').trim()
+	if (!q) return res.status(400).json({ error: 'missing_q' })
+	const items = await prisma.generation.findMany({ where: { inputPrompt: { contains: q, mode: 'insensitive' as any } } as any, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
+	const nextPage = items.length === limit ? page + 1 : undefined
+	res.json({ items, nextPage })
 })
 
 export const routes = r

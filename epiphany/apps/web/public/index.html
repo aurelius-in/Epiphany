@@ -35,6 +35,7 @@
   <header class="topbar">
     <div class="brand">
       <img src="epiphany.gif" alt="Epiphany AI Art Studio" class="brand-logo">
+      <span id="apiVersion" style="margin-left:8px;color:#a4a4ad;font-size:12px;"></span>
     </div>
     <nav class="menubar" aria-label="Main menu">
       <ul>
@@ -44,6 +45,10 @@
         <li><a href="/gallery" style="color:inherit;text-decoration:none">Gallery</a></li>
         <li><a href="/events" style="color:inherit;text-decoration:none">Events</a></li>
         <li><a href="/assets" style="color:inherit;text-decoration:none">Assets</a></li>
+        <li><a href="/metrics" style="color:inherit;text-decoration:none">Metrics</a></li>
+        <li><a href="/queues" style="color:inherit;text-decoration:none">Queues</a></li>
+        <li><a href="/errors" style="color:inherit;text-decoration:none">Errors</a></li>
+        <li><a href="/about" style="color:inherit;text-decoration:none">About</a></li>
       </ul>
     </nav>
   </header>
@@ -188,6 +193,18 @@
       splash.classList.add('show');
       requestAnimationFrame(() => splash.classList.add('fade'));
       setTimeout(() => { splash.classList.add('done'); setTimeout(() => splash.remove(), 350); }, 6000);
+    })();
+  </script>
+
+  <script>
+    (async function showVersion(){
+      try{
+        const r = await fetch('/api/proxy/v1/version');
+        if (!r.ok) return;
+        const j = await r.json();
+        const el = document.getElementById('apiVersion');
+        if (el && j && j.version) el.textContent = `v${j.version}`;
+      }catch(_){ }
     })();
   </script>
 
@@ -343,7 +360,7 @@
       }
 
       async function pollJob(id){
-        const st = await getJson(`${API_BASE}/v1/jobs/${id}?signed=1`);
+        const st = await getJson(`${API_BASE}/v1/jobs/${id}?signed=1&ttl=900`);
         return st;
       }
 

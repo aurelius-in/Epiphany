@@ -5,6 +5,26 @@ const headers = (apiKey: string) => ({
 	'X-API-Key': apiKey,
 })
 
+export type Generation = {
+	id: string
+	kind: 'image' | 'video'
+	status: string
+	outputUrl?: string | null
+	previewUrls?: string[] | null
+	createdAt?: string
+	inputPrompt?: string | null
+	aspect?: string | null
+	steps?: number | null
+	cfg?: number | null
+	seed?: number | null
+	modelId?: string | null
+	stylePreset?: string | null
+	safety?: any | null
+}
+
+export type Asset = { id: string, url: string, kind: string, mime: string, bytes?: number|null, width?: number|null, height?: number|null }
+export type Event = { id: string, generationId: string, type: string, payload: any, createdAt: string }
+
 export const enhanceReq = z.object({ prompt: z.string().min(1).max(2000) })
 export const enhanceRes = z.object({ promptEnhanced: z.string(), seedPhrases: z.array(z.string()) })
 
@@ -26,11 +46,37 @@ export async function enhance(baseUrl: string, apiKey: string, prompt: string) {
 	return enhanceRes.parse(j)
 }
 
-export async function getJob(baseUrl: string, apiKey: string, id: string, opts?: { signed?: boolean }) {
-	const q = opts?.signed ? '?signed=1' : ''
+export async function getJob(baseUrl: string, apiKey: string, id: string, opts?: { signed?: boolean, ttlSec?: number }) {
+	const p = new URLSearchParams()
+	if (opts?.signed) p.set('signed','1')
+	if (opts?.ttlSec) p.set('ttl', String(opts.ttlSec))
+	const q = p.toString() ? `?${p.toString()}` : ''
 	const r = await fetch(`${baseUrl}/v1/jobs/${id}${q}`, { headers: headers(apiKey) })
 	const j = await r.json()
 	return jobRes.parse(j)
+}
+
+export async function getJobByGeneration(baseUrl: string, apiKey: string, generationId: string) {
+	const r = await fetch(`${baseUrl}/v1/jobs/by-generation/${generationId}`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function cancelJobByGeneration(baseUrl: string, apiKey: string, generationId: string) {
+	const r = await fetch(`${baseUrl}/v1/jobs/by-generation/${generationId}/cancel`, { method: 'POST', headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function cancelJob(baseUrl: string, apiKey: string, id: string) {
+	const r = await fetch(`${baseUrl}/v1/jobs/${id}`, { method: 'DELETE', headers: headers(apiKey) })
+	return await r.json()
+}
+
+export function streamJobWithKey(baseUrl: string, apiKey: string, id: string, onEvent: (ev: any) => void) {
+	const url = `${baseUrl}/v1/jobs/${id}/stream?key=${encodeURIComponent(apiKey)}`
+	const es = new EventSource(url)
+	es.onmessage = (e) => { try { onEvent(JSON.parse(e.data)) } catch {} }
+	es.onerror = () => { es.close() }
+	return es
 }
 
 const aspectEnum = z.enum(["1:1","16:9","9:16","3:2","2:3"]) as unknown as z.ZodEnum<["1:1","16:9","9:16","3:2","2:3"]>
@@ -93,16 +139,20 @@ const generationSchema = z.object({
 	safety: z.any().nullable().optional(),
 })
 
-export async function listGenerations(baseUrl: string, apiKey: string, page = 1, limit = 50, opts?: { signed?: boolean }) {
+export async function listGenerations(baseUrl: string, apiKey: string, page = 1, limit = 50, opts?: { signed?: boolean, ttlSec?: number }) {
 	const q = new URLSearchParams({ page: String(page), limit: String(limit) })
 	if (opts?.signed) q.set('signed','1')
+	if (opts?.ttlSec) q.set('ttl', String(opts.ttlSec))
 	const r = await fetch(`${baseUrl}/v1/generations?${q.toString()}`, { headers: headers(apiKey) })
 	const j = await r.json()
 	return z.object({ items: z.array(generationSchema), nextPage: z.number().optional() }).parse(j)
 }
 
-export async function getGeneration(baseUrl: string, apiKey: string, id: string, opts?: { signed?: boolean }) {
-	const q = opts?.signed ? '?signed=1' : ''
+export async function getGeneration(baseUrl: string, apiKey: string, id: string, opts?: { signed?: boolean, ttlSec?: number }) {
+	const p = new URLSearchParams()
+	if (opts?.signed) p.set('signed','1')
+	if (opts?.ttlSec) p.set('ttl', String(opts.ttlSec))
+	const q = p.toString() ? `?${p.toString()}` : ''
 	const r = await fetch(`${baseUrl}/v1/generations/${id}${q}`, { headers: headers(apiKey) })
 	const j = await r.json()
 	return generationSchema.parse(j)
@@ -144,16 +194,6 @@ export async function listEvents(baseUrl: string, apiKey: string, params?: { gen
 	return z.object({ items: z.array(z.any()), nextPage: z.number().optional() }).parse(j)
 }
 
-export async function streamJob(baseUrl: string, apiKey: string, id: string, onEvent: (ev: any) => void) {
-	const url = `${baseUrl}/v1/jobs/${id}/stream`
-	const es = new EventSource(url, { withCredentials: false } as any)
-	es.onmessage = (e) => {
-		try { onEvent(JSON.parse(e.data)) } catch { /* noop */ }
-	}
-	es.onerror = () => { es.close() }
-	return es
-}
-
 export async function requestUploadUrl(baseUrl: string, apiKey: string, key?: string, contentType?: string) {
 	const r = await fetch(`${baseUrl}/v1/upload-url`, { method: 'POST', headers: headers(apiKey), body: JSON.stringify({ key, contentType }) })
 	const j = await r.json()
@@ -166,9 +206,10 @@ export async function putBytesSigned(putUrl: string, bytes: Uint8Array, contentT
 	return true
 }
 
-export async function listAssets(baseUrl: string, apiKey: string, page = 1, limit = 100, opts?: { signed?: boolean }) {
+export async function listAssets(baseUrl: string, apiKey: string, page = 1, limit = 100, opts?: { signed?: boolean, ttlSec?: number }) {
 	const q = new URLSearchParams({ page: String(page), limit: String(limit) })
 	if (opts?.signed) q.set('signed','1')
+	if (opts?.ttlSec) q.set('ttl', String(opts.ttlSec))
 	const r = await fetch(`${baseUrl}/v1/assets?${q.toString()}`, { headers: headers(apiKey) })
 	const j = await r.json()
 	return z.object({ items: z.array(z.any()), nextPage: z.number().optional() }).parse(j)
@@ -179,6 +220,110 @@ export async function listGenerationEvents(baseUrl: string, apiKey: string, gene
 	const r = await fetch(`${baseUrl}/v1/generations/${generationId}/events?${q.toString()}`, { headers: headers(apiKey) })
 	const j = await r.json()
 	return z.object({ items: z.array(z.any()), nextPage: z.number().optional() }).parse(j)
+}
+
+export async function deleteAsset(baseUrl: string, apiKey: string, args: { id?: string, url?: string }) {
+	const r = await fetch(`${baseUrl}/v1/assets`, { method: 'DELETE', headers: headers(apiKey), body: JSON.stringify(args) })
+	const j = await r.json()
+	return z.object({ ok: z.boolean() }).parse(j)
+}
+
+export async function deleteGeneration(baseUrl: string, apiKey: string, id: string) {
+	const r = await fetch(`${baseUrl}/v1/generations/${id}`, { method: 'DELETE', headers: headers(apiKey) })
+	const j = await r.json()
+	return z.object({ ok: z.boolean(), deletedAssets: z.number().optional() }).parse(j)
+}
+
+export async function getMetrics(baseUrl: string, apiKey: string) {
+	const r = await fetch(`${baseUrl}/v1/metrics`, { headers: headers(apiKey) })
+	const j = await r.json()
+	return z.object({ totals: z.object({ generations: z.number(), assets: z.number(), events: z.number(), explains: z.number() }), generationsByStatus: z.object({ succeeded: z.number(), failed: z.number(), queued: z.number() }) }).parse(j)
+}
+
+export async function getQueues(baseUrl: string, apiKey: string) {
+	const r = await fetch(`${baseUrl}/v1/queues`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function refreshExplain(baseUrl: string, apiKey: string, id: string) {
+	const r = await fetch(`${baseUrl}/v1/explain/${id}/refresh`, { method: 'POST', headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function listErrors(baseUrl: string, apiKey: string, page = 1, limit = 50) {
+	const q = new URLSearchParams({ page: String(page), limit: String(limit) })
+	const r = await fetch(`${baseUrl}/v1/errors?${q.toString()}`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function retryGeneration(baseUrl: string, apiKey: string, id: string) {
+	const r = await fetch(`${baseUrl}/v1/retry/${id}`, { method: 'POST', headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function getVersion(baseUrl: string, apiKey: string) {
+	const r = await fetch(`${baseUrl}/v1/version`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function getConfig(baseUrl: string, apiKey: string) {
+	const r = await fetch(`${baseUrl}/v1/config`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function waitForJob(baseUrl: string, apiKey: string, id: string, opts?: { signed?: boolean, ttlSec?: number, timeoutMs?: number, onProgress?: (p: number) => void }) {
+	const timeout = opts?.timeoutMs ?? 120_000
+	const start = Date.now()
+	let done = false
+	try {
+		const url = `${baseUrl}/v1/jobs/${id}/stream`
+		const es = new EventSource(url, { withCredentials: false } as any)
+		es.onmessage = async (e) => {
+			try {
+				const ev = JSON.parse(e.data)
+				if (typeof ev.progress === 'number' && opts?.onProgress) opts.onProgress(ev.progress)
+				if (ev.done) {
+					es.close()
+					done = true
+				}
+			} catch {}
+		}
+		es.onerror = () => { try { es.close() } catch {} }
+	} catch {}
+	while (!done && Date.now() - start < timeout) {
+		await new Promise(r => setTimeout(r, 1200))
+		const st = await getJob(baseUrl, apiKey, id, { signed: opts?.signed, ttlSec: opts?.ttlSec })
+		if (opts?.onProgress && typeof st.progress === 'number') opts.onProgress(st.progress)
+		if (st.status === 'succeeded' || st.outputUrl) return st
+		if (st.status === 'failed') return st
+	}
+	return getJob(baseUrl, apiKey, id, { signed: opts?.signed, ttlSec: opts?.ttlSec })
+}
+
+export async function getAsset(baseUrl: string, apiKey: string, id: string) {
+	const r = await fetch(`${baseUrl}/v1/assets/${id}`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function getServerTime(baseUrl: string, apiKey: string) {
+	const r = await fetch(`${baseUrl}/v1/time`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function searchAssets(baseUrl: string, apiKey: string, params: { page?: number, limit?: number, kind?: string, mime?: string }) {
+	const q = new URLSearchParams()
+	if (params.page) q.set('page', String(params.page))
+	if (params.limit) q.set('limit', String(params.limit))
+	if (params.kind) q.set('kind', params.kind)
+	if (params.mime) q.set('mime', params.mime)
+	const r = await fetch(`${baseUrl}/v1/assets/search?${q.toString()}`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function searchGenerations(baseUrl: string, apiKey: string, qstr: string, page = 1, limit = 50) {
+	const q = new URLSearchParams({ q: qstr, page: String(page), limit: String(limit) })
+	const r = await fetch(`${baseUrl}/v1/generations/search?${q.toString()}`, { headers: headers(apiKey) })
+	return await r.json()
 }
 
 export type { z } from 'zod'

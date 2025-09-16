@@ -27,11 +27,15 @@ export default function GalleryPage() {
 	const [nextPage, setNextPage] = useState<number | undefined>(undefined)
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
+	const [q, setQ] = useState('')
 
 	async function load(p = 1) {
 		setLoading(true)
 		try {
-			const res = await fetch(`/api/proxy/v1/generations?page=${p}&limit=24&signed=1`)
+			const url = q?
+				`/api/proxy/v1/generations/search?q=${encodeURIComponent(q)}&page=${p}&limit=24` :
+				`/api/proxy/v1/generations?page=${p}&limit=24&signed=1&ttl=900`
+			const res = await fetch(url)
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
 			const data: ListRes = await res.json()
 			setItems(prev => p === 1 ? data.items : [...prev, ...data.items])
@@ -69,6 +73,10 @@ export default function GalleryPage() {
 	return (
 		<div style={{padding: 16}}>
 			<h1 style={{marginBottom: 12}}>Gallery</h1>
+			<div style={{display:'flex', gap:8, alignItems:'center', marginBottom:12}}>
+				<input placeholder="Search prompt…" value={q} onChange={e=>setQ(e.target.value)} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8, width:'280px'}} />
+				<button onClick={()=>load(1)} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Search</button>
+			</div>
 			{loading && page === 1 && <div>Loading…</div>}
 			{error && <div style={{color:'tomato'}}>Error: {error}</div>}
 			<div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:12}}>
@@ -99,6 +107,9 @@ export default function GalleryPage() {
 							<div style={{display:'flex', gap:6, alignItems:'center'}}>
 								{it.safety && <span style={{border:'1px solid #26262a', padding:'2px 6px', borderRadius:8}}>{safetyLabel(it.safety)}</span>}
 								<a href={recreateHref(it)} style={{color:'#cfd0ff'}}>Recreate</a>
+								<a href={`/generations/${it.id}`} style={{color:'#cfd0ff'}}>Details</a>
+								<button onClick={async (e)=>{ e.preventDefault(); try { await fetch(`/api/proxy/v1/jobs/by-generation/${it.id}/cancel`, { method:'POST' }); } catch {} }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'4px 8px', borderRadius:8}}>Cancel</button>
+								<button onClick={async (e)=>{ e.preventDefault(); try { const r = await fetch(`/api/proxy/v1/retry/${it.id}`, { method:'POST' }); const j = await r.json(); if (j?.generationId) location.href = `/generations/${j.generationId}` } catch {} }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'4px 8px', borderRadius:8}}>Retry</button>
 							</div>
 						</div>
 					</div>

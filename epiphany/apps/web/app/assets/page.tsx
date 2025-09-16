@@ -11,11 +11,14 @@ export default function AssetsPage() {
 	const [nextPage, setNextPage] = useState<number | undefined>(undefined)
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
+	const [kind, setKind] = useState<string>('')
 
 	async function load(p = 1) {
 		setLoading(true)
 		try {
-			const res = await fetch(`/api/proxy/v1/assets?page=${p}&limit=60&signed=1`)
+			const q = new URLSearchParams({ page: String(p), limit: '60', signed: '1' })
+			if (kind) q.set('kind', kind)
+			const res = await fetch(`/api/proxy/v1/assets/search?${q.toString()}`)
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
 			const data: ListRes = await res.json()
 			setItems(prev => p === 1 ? data.items : [...prev, ...data.items])
@@ -33,6 +36,14 @@ export default function AssetsPage() {
 	return (
 		<div style={{padding:16}}>
 			<h1 style={{marginBottom:12}}>Assets</h1>
+			<div style={{display:'flex', gap:8, alignItems:'center', marginBottom:12}}>
+				<select value={kind} onChange={e=>setKind(e.target.value)} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>
+					<option value="">All</option>
+					<option value="image">Images</option>
+					<option value="video">Videos</option>
+				</select>
+				<button onClick={()=>load(1)} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Apply</button>
+			</div>
 			{loading && page === 1 && <div>Loading…</div>}
 			{error && <div style={{color:'tomato'}}>Error: {error}</div>}
 			<div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))', gap:10}}>
@@ -43,7 +54,13 @@ export default function AssetsPage() {
 						) : (
 							<video src={a.url} style={{width:'100%', height:180, objectFit:'cover'}} controls />
 						)}
-						<div style={{padding:8, fontSize:12, color:'#a4a4ad'}}>{a.kind} • {a.mime}</div>
+						<div style={{padding:8, fontSize:12, color:'#a4a4ad', display:'flex', justifyContent:'space-between', alignItems:'center', gap:8}}>
+							<div>{a.kind} • {a.mime}</div>
+							<div style={{display:'flex', gap:8}}>
+								<a href={a.url} download style={{color:'#cfd0ff'}}>Download</a>
+								<button onClick={async (e)=>{e.preventDefault(); if (!confirm('Delete this asset?')) return; try{ await fetch('/api/proxy/v1/assets', { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: a.id }) }); await load(1); }catch{}}} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'6px 10px', borderRadius:8}}>Delete</button>
+							</div>
+						</div>
 					</div>
 				))}
 			</div>

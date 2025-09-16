@@ -70,11 +70,29 @@ Headers: `X-API-Key: <string>`, `Content-Type: application/json`
 - POST `/v1/edit/*` → upscale, restore-face, remove-bg, crop, resize, caption
 - GET  `/v1/jobs/:id` → `{ status, progress, outputUrl, previewUrls[], explainId, caption }`
 - GET  `/v1/jobs/:id/stream` → Server-Sent Events for live progress
-- GET  `/v1/generations` → recent history (paginated)
+- Note: SSE also accepts `?key=<API_KEY>` for environments where headers are stripped
+- GET  `/v1/jobs/by-generation/:id` → lookup job for a generation
+- POST `/v1/jobs/by-generation/:id/cancel` → cancel job for a generation
+- DELETE `/v1/jobs/:id` → remove a job (if present)
+- GET  `/v1/generations` → recent history (paginated; supports `?signed=1&ttl=900`)
+- GET  `/v1/generations/search` → search by prompt substring (`?q=`)
+- GET  `/v1/generations/:id/events` → events for a generation
 - GET  `/v1/explain/:id` → token scores + heatmap URLs
 - GET  `/v1/events` → recent events (filter by `generationId`)
+- GET  `/v1/event-types` → list distinct event types
+- GET  `/v1/errors` → failed generations
+- POST `/v1/retry/:id` → retry a failed generation
+- GET  `/v1/assets` → recent assets (paginated; supports `?signed=1&ttl=900`)
+- GET  `/v1/assets/search` → filter by kind/mime
 - GET  `/v1/health` → `{ ok, services:{db,redis,s3,infer_image,infer_video,edit,explain} }`
 - GET  `/v1/version` → `{ name, version }`
+- GET  `/v1/config` → safe runtime config (web origin, rate limit, S3 info)
+- GET  `/v1/ping` → `{ pong: true }`
+- GET  `/v1/system` → `{ health, version, config }`
+- GET  `/v1/time` → `{ now: <iso> }`
+- GET  `/v1/uptime` → `{ startedAt, uptimeMs }`
+- GET  `/v1/queues` → BullMQ queue counts by state
+- GET  `/v1/_routes` → simple introspection of registered routes
 
 All request/response bodies are typed and validated with Zod (SDK included). SSE is supported for job progress.
 
