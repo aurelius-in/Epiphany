@@ -226,6 +226,18 @@ r.post('/jobs/:id/cancel', async (req, res) => {
 	res.json({ id, cancelled: true })
 })
 
+r.delete('/jobs/:id', async (req, res) => {
+	const id = String(req.params.id)
+	let removed = false
+	for (const q of Object.values(queues)) {
+		const j = await (q as any).getJob(id)
+		if (j) {
+			try { await j.remove(); removed = true } catch {}
+		}
+	}
+	res.json({ id, removed })
+})
+
 r.get('/generations', async (req, res) => {
 	const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1)
 	const limit = Math.max(1, Math.min(100, parseInt(String(req.query.limit || '50')) || 50))

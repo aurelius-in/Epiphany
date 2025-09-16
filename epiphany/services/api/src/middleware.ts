@@ -9,7 +9,7 @@ export function requestId(req: Request, _res: Response, next: NextFunction) {
 export function apiKeyAuth(apiKey?: string) {
 	return function(req: Request, res: Response, next: NextFunction) {
 		if (!apiKey) return next()
-		const key = req.header('X-API-Key') || req.header('x-api-key')
+		const key = (req.header('X-API-Key') || req.header('x-api-key') || (req.query && (req.query as any).key)) as string | undefined
 		if (key !== apiKey) return res.status(401).json({ error: 'unauthorized' })
 		next()
 	}
