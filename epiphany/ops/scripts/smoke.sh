@@ -59,6 +59,18 @@ for i in {1..15}; do
   sleep 2
 done
 
+echo "Stylize video job..."
+JOBSV=$(curl -sSf -H "X-API-Key: $API_KEY" -H 'Content-Type: application/json' \
+  -d '{"prompt":"a stylized video","mode":0, "stylize": true, "fps": 24, "resolution": "720p", "durationSec": 4}' \
+  "$API_BASE/v1/generate/video")
+JOBSV_ID=$(echo "$JOBSV" | jq -r .id)
+for i in {1..30}; do
+  ST=$(curl -sSf -H "X-API-Key: $API_KEY" "$API_BASE/v1/jobs/$JOBSV_ID?signed=1")
+  echo "sstatus=$(echo "$ST" | jq -r .status)"
+  if [[ "$(echo "$ST" | jq -r .outputUrl)" != "null" ]]; then break; fi
+  sleep 2
+ done
+
 echo "assets..."
 curl -sSf -H "X-API-Key: $API_KEY" "$API_BASE/v1/assets?signed=1&limit=5" | jq -r '.items[0].url' || true
 
