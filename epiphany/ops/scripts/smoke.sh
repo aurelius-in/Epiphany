@@ -58,3 +58,6 @@ curl -sSf -H "X-API-Key: $API_KEY" "$API_BASE/v1/metrics" | jq .totals || true
 
 echo "version..."
 curl -sSf -H "X-API-Key: $API_KEY" "$API_BASE/v1/version" | jq . || true
+
+echo "config..."
+curl -sSf -H "X-API-Key: $API_KEY" "$API_BASE/v1/config" | jq . || true

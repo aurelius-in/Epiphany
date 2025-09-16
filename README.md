@@ -77,6 +77,8 @@ Headers: `X-API-Key: <string>`, `Content-Type: application/json`
 - GET  `/v1/assets` → recent assets (paginated, `?signed=1`)
 - GET  `/v1/health` → `{ ok, services:{db,redis,s3,infer_image,infer_video,edit,explain} }`
 - GET  `/v1/version` → `{ name, version }`
+- GET  `/v1/config` → safe runtime config (web origin, rate limit, S3 info)
+- GET  `/v1/ping` → `{ pong: true }`
 - GET  `/v1/queues` → BullMQ queue counts by state
 
 All request/response bodies are typed and validated with Zod (SDK included). SSE is supported for job progress.

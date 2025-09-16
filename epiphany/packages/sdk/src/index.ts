@@ -230,4 +230,14 @@ export async function retryGeneration(baseUrl: string, apiKey: string, id: strin
 	return await r.json()
 }
 
+export async function getVersion(baseUrl: string, apiKey: string) {
+	const r = await fetch(`${baseUrl}/v1/version`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function getConfig(baseUrl: string, apiKey: string) {
+	const r = await fetch(`${baseUrl}/v1/config`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
 export type { z } from 'zod'

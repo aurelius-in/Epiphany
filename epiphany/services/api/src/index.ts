@@ -20,11 +20,11 @@ app.use((_, res, next) => {
 })
 
 app.use(requestId)
+app.use((req, res, next) => { res.setHeader('X-Request-Id', (req as any).id || ''); next() })
 app.use((req, res, next) => {
 	const orig = tinyRateLimit(env.RATE_LIMIT_MAX || 120, env.RATE_LIMIT_WINDOW_MS || 60_000)
 	return orig(req as any, res as any, (err?: any) => {
 		try {
-			const ip = (req.ip || (req as any).connection?.remoteAddress || 'unknown') as string
 			const windowMs = env.RATE_LIMIT_WINDOW_MS || 60_000
 			;(res as any).setHeader('X-RateLimit-Limit', String(env.RATE_LIMIT_MAX || 120))
 			;(res as any).setHeader('X-RateLimit-Window', String(windowMs))
@@ -32,7 +32,7 @@ app.use((req, res, next) => {
 		next(err)
 	})
 })
-app.use(cors(env.WEB_ORIGIN ? { origin: env.WEB_ORIGIN } : undefined))
+app.use(cors(env.WEB_ORIGIN ? { origin: env.WEB_ORIGIN, exposedHeaders: ['X-Request-Id','X-RateLimit-Limit','X-RateLimit-Window'] } : undefined))
 app.use(express.json({ limit: '2mb' }))
 
 morgan.token('rid', (req: any) => req.id)
@@ -49,6 +49,15 @@ app.get('/v1/version', (_req, res) => {
 	res.json({ name: 'epiphany', version: process.env.npm_package_version || '0.1.0' })
 })
 
+app.get('/v1/config', (_req, res) => {
+	res.json({
+		webOrigin: env.WEB_ORIGIN || null,
+		allowNswf: !!env.ALLOW_NSWF,
+		rateLimit: { max: env.RATE_LIMIT_MAX || 120, windowMs: env.RATE_LIMIT_WINDOW_MS || 60_000 },
+		s3: { endpoint: env.S3_ENDPOINT || null, region: env.S3_REGION || null, bucket: env.S3_BUCKET || null, inputsBucket: env.S3_INPUTS_BUCKET || env.S3_BUCKET || null },
+	})
+})
+
 app.post('/v1/enhance', (req, res) => {
 	const raw = String((req.body?.prompt ?? '')).trim()
 	let prompt = raw
@@ -59,10 +68,10 @@ app.post('/v1/enhance', (req, res) => {
 	res.json({ promptEnhanced: prompt || 'a detailed high-quality image, cinematic, high detail', seedPhrases })
 })
 
+app.get('/v1/ping', (_req, res) => res.json({ pong: true }))
+
 app.use('/v1', urlAllowlist())
 app.use('/v1', routes)
-
-app.use((req, res, next) => { res.setHeader('X-Request-Id', (req as any).id || ''); next() })
 
 app.use((err: any, req: any, res: any, _next: any) => {
 	const code = typeof err?.status === 'number' ? err.status : 500
