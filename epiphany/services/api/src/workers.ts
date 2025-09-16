@@ -57,7 +57,7 @@ async function processGenerateVideo(job: Job) {
 	try {
 		await prisma.generation.update({ where: { id: job.data.generationId }, data: { status: 'running' } })
 		await job.updateProgress(10)
-		const endpoint = job.data?.sourceImageUrl ? 'http://localhost:8002/infer/animate' : 'http://localhost:8002/infer/t2v'
+		const endpoint = job.data?.stylize ? 'http://localhost:8002/infer/stylize' : (job.data?.sourceImageUrl ? 'http://localhost:8002/infer/animate' : 'http://localhost:8002/infer/t2v')
 		const resp = await postJson<any>(endpoint, job.data)
 		await job.updateProgress(90)
 		const durationMs = resp.duration_ms || (Date.now() - t0)
@@ -118,9 +118,31 @@ async function processExplain(job: Job) {
 	}
 }
 
+async function processRetention(job: Job) {
+	try {
+		const days = Number(job.data?.days || 0)
+		if (!days || days <= 0) return { deleted: 0 }
+		const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+		// Delete assets older than cutoff
+		const oldAssets = await prisma.asset.findMany({ where: { createdAt: { lt: cutoff } } as any })
+		let deleted = 0
+		for (const a of oldAssets) {
+			try { await prisma.asset.delete({ where: { id: a.id } }); deleted++ } catch {}
+		}
+		// Optionally mark generations without output older than cutoff as deleted/failed
+		const oldGens = await prisma.generation.findMany({ where: { createdAt: { lt: cutoff }, status: { in: ['succeeded','failed'] } } as any })
+		let touched = 0
+		for (const g of oldGens) { try { await prisma.generation.update({ where: { id: g.id }, data: { status: g.status } }); touched++ } catch {} }
+		return { deleted, touched }
+	} catch (err: any) {
+		throw err
+	}
+}
+
 export function startWorkers() {
 	new Worker('generate_image', processGenerateImage, { connection })
 	new Worker('generate_video', processGenerateVideo, { connection })
 	new Worker('edit_image', processEdit, { connection })
 	new Worker('explain', processExplain, { connection })
+	new Worker('retention', processRetention, { connection })
 }

@@ -15,6 +15,7 @@ export type AppEnv = {
 	WEB_ORIGIN?: string
 	RATE_LIMIT_MAX?: number
 	RATE_LIMIT_WINDOW_MS?: number
+	RETENTION_DAYS?: number
 }
 
 export function getEnv(): AppEnv {
@@ -33,5 +34,6 @@ export function getEnv(): AppEnv {
 		WEB_ORIGIN: process.env.WEB_ORIGIN,
 		RATE_LIMIT_MAX: process.env.RATE_LIMIT_MAX ? Number(process.env.RATE_LIMIT_MAX) : undefined,
 		RATE_LIMIT_WINDOW_MS: process.env.RATE_LIMIT_WINDOW_MS ? Number(process.env.RATE_LIMIT_WINDOW_MS) : undefined,
+		RETENTION_DAYS: process.env.RETENTION_DAYS ? Number(process.env.RETENTION_DAYS) : undefined,
 	}
 }

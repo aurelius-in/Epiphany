@@ -36,6 +36,7 @@ export const jobRes = z.object({
 	previewUrls: z.array(z.string()).optional(),
 	explainId: z.string().optional(),
 	caption: z.string().optional(),
+	safety: z.any().optional(),
 	error: z.string().optional(),
 })
 
@@ -113,6 +114,7 @@ export const genVideoReq = z.object({
 	seed: z.number().nullable().optional(),
 	modelId: z.enum(["svd","modelscope-t2v"]).optional(),
 	sourceImageUrl: z.string().url().optional(),
+	stylize: z.boolean().optional(),
 })
 
 export async function generateVideo(baseUrl: string, apiKey: string, req: z.infer<typeof genVideoReq>) {
@@ -353,6 +355,16 @@ export async function filterGenerations(baseUrl: string, apiKey: string, params:
 
 export async function drainQueue(baseUrl: string, apiKey: string, name: string) {
 	const r = await fetch(`${baseUrl}/v1/queues/empty`, { method: 'POST', headers: headers(apiKey), body: JSON.stringify({ name }) })
+	return await r.json()
+}
+
+export async function getRetentionConfig(baseUrl: string, apiKey: string) {
+	const r = await fetch(`${baseUrl}/v1/retention/config`, { headers: headers(apiKey) })
+	return await r.json()
+}
+
+export async function runRetention(baseUrl: string, apiKey: string) {
+	const r = await fetch(`${baseUrl}/v1/retention/run`, { method: 'POST', headers: headers(apiKey) })
 	return await r.json()
 }
 

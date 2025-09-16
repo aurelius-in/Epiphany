@@ -18,6 +18,7 @@ export const queues = {
 	generate_video: new Queue('generate_video', queueOpts),
 	edit_image: new Queue('edit_image', queueOpts),
 	explain: new Queue('explain', queueOpts),
+	retention: new Queue('retention', queueOpts),
 }
 
 export function queueEvents() {
@@ -26,6 +27,7 @@ export function queueEvents() {
 		generate_video: new QueueEvents('generate_video', { connection }),
 		edit_image: new QueueEvents('edit_image', { connection }),
 		explain: new QueueEvents('explain', { connection }),
+		retention: new QueueEvents('retention', { connection }),
 	}
 }
 

@@ -145,6 +145,23 @@
         </div>
       </div>
 
+      <div class="card" style="margin-top:8px;padding:8px">
+        <div style="display:flex;align-items:center;gap:10px;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <input id="cnEnable" type="checkbox" />
+            <label for="cnEnable" class="field-label" style="margin:0">ControlNet</label>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <label class="field-label" for="cnType" style="margin:0">Type</label>
+            <select id="cnType" class="select"><option value="canny">Canny</option><option value="depth">Depth</option><option value="pose">Pose</option></select>
+            <label class="field-label" for="cnStrength" style="margin:0">Strength</label>
+            <input id="cnStrength" type="range" min="0" max="1" step="0.05" value="1" />
+            <span id="cnStrengthVal" style="font-size:12px;color:#a4a4ad;width:28px;text-align:right">1.0</span>
+          </div>
+        </div>
+        <div style="color:#a4a4ad;font-size:12px;margin-top:6px">Uses Init Image as the control image when enabled.</div>
+      </div>
+
       <div class="grid-3">
         <div>
           <label class="field-label" for="initFile">Init Image (optional)</label>
@@ -159,6 +176,11 @@
           <div id="maskPreviewWrap" style="margin-top:6px;display:flex;gap:6px;align-items:center">
             <img id="maskPreview" alt="Mask preview" style="width:72px;height:72px;object-fit:cover;border:1px solid #26262a;border-radius:6px;display:none" />
           </div>
+        </div>
+        <div>
+          <label class="field-label" for="i2iStrength">Img2Img Strength</label>
+          <input id="i2iStrength" type="range" min="0.05" max="0.99" step="0.01" value="0.60" />
+          <div style="font-size:12px;color:#a4a4ad">Strength: <span id="i2iStrengthVal">0.60</span></div>
         </div>
       </div>
 
@@ -198,6 +220,13 @@
           </div>
           <input id="videoSourceFile" type="file" accept="image/*" class="input" />
         </div>
+        <div>
+          <label class="field-label" for="videoStylize">Stylize</label>
+          <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+            <input id="videoStylize" type="checkbox" />
+            <span style="font-size:12px;color:#a4a4ad">Apply stylization to input/video</span>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -207,7 +236,10 @@
         <div class="panel-title">Result</div>
         <div class="panel-body result-body" id="resultBody">
           <!-- Preloaded output -->
-          <img id="resultImg" class="result-img" src="gen-ai.gif" alt="Generated result">
+          <div id="resultStack" style="position:relative;display:inline-block">
+            <img id="resultImg" class="result-img" src="gen-ai.gif" alt="Generated result">
+            <img id="explainOverlay" alt="Explain heatmap" style="position:absolute;inset:0;mix-blend-mode:overlay;opacity:0;pointer-events:none;display:none;border-radius:12px" />
+          </div>
         </div>
         <div class="result-meta" id="resultMeta">
           <span class="chip">Mode: <strong id="metaMode">Safe</strong></span>
@@ -216,6 +248,13 @@
           <span class="chip">CFG: <strong id="metaCFG">6.5</strong></span>
           <span class="chip">Seed: <strong id="metaSeed">random</strong></span>
           <span class="chip" id="metaCaption" style="display:none;">Caption: <strong></strong></span>
+          <label style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#a4a4ad">
+            <input id="nsfwBlurToggle" type="checkbox" checked /> Blur NSFW
+          </label>
+          <label style="margin-left:8px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#a4a4ad">
+            <input id="explainToggle" type="checkbox" /> Explain
+          </label>
+          <input id="explainOpacity" type="range" min="0" max="1" step="0.05" value="0.6" style="width:90px" />
         </div>
       </div>
 
@@ -339,6 +378,10 @@
     const stepsInp = document.getElementById('stepsInput');
     const cfgInp   = document.getElementById('cfgInput');
     const seedInp  = document.getElementById('seedInput');
+    const cnEnable = document.getElementById('cnEnable');
+    const cnType   = document.getElementById('cnType');
+    const cnStrength = document.getElementById('cnStrength');
+    const cnStrengthVal = document.getElementById('cnStrengthVal');
 
     function setMode(v){
       const n = Math.max(0, Math.min(2, parseInt(v,10) || 0));
@@ -358,6 +401,14 @@
     modeRange.addEventListener('input', e => setMode(e.target.value));
     modeBtns.forEach(b => b.addEventListener('click', () => setMode(b.dataset.set)));
     [arSelect, stepsInp, cfgInp, seedInp].forEach(el => el.addEventListener('input', updateMetaFromControls));
+    cnStrength?.addEventListener('input', () => { if (cnStrengthVal) cnStrengthVal.textContent = Number(cnStrength.value).toFixed(2) });
+    function syncCnDisabled(){
+      const on = !!(cnEnable && cnEnable.checked);
+      if (cnType) cnType.disabled = !on;
+      if (cnStrength) cnStrength.disabled = !on;
+    }
+    cnEnable?.addEventListener('change', syncCnDisabled);
+    syncCnDisabled();
 
     // Initial meta fill
     setMode(modeRange.value);
@@ -438,13 +489,51 @@
       const durationSelect = document.getElementById('durationSelect');
       const videoUseInit = document.getElementById('videoUseInit');
       const videoSourceFile = document.getElementById('videoSourceFile');
+      const videoStylize = document.getElementById('videoStylize');
       const initFile = document.getElementById('initFile');
       const maskFile = document.getElementById('maskFile');
       const resultImg = document.getElementById('resultImg');
+      const resultStack = document.getElementById('resultStack');
+      const explainOverlay = document.getElementById('explainOverlay');
       const resultBody = document.getElementById('resultBody');
       const resultMeta = document.getElementById('resultMeta');
       const historyList = document.querySelector('.history-list');
       const captionChip = document.getElementById('metaCaption');
+      const nsfwBlurToggle = document.getElementById('nsfwBlurToggle');
+      const explainToggle = document.getElementById('explainToggle');
+      const explainOpacity = document.getElementById('explainOpacity');
+      try { const saved = localStorage.getItem('nsfw_blur'); if (saved != null && nsfwBlurToggle) nsfwBlurToggle.checked = saved !== '0'; } catch {}
+      nsfwBlurToggle?.addEventListener('change', () => { try { localStorage.setItem('nsfw_blur', nsfwBlurToggle.checked ? '1' : '0') } catch {} if ((resultImg as any)._lastSafety != null) applySafetyBlur((resultImg as any)._lastSafety); });
+
+      function applySafetyBlur(safety){
+        try{
+          (resultImg as any)._lastSafety = safety;
+          const nsfw = !!(safety && ((safety.nsfw ?? safety['nsfw']) || 0) > 0);
+          const on = !!(nsfwBlurToggle && nsfwBlurToggle.checked);
+          resultImg.style.filter = on && nsfw ? 'blur(14px)' : '';
+        }catch(_){ }
+      }
+
+      async function loadExplain(explainId){
+        try{
+          const r = await fetch(`${API_BASE}/v1/explain/${encodeURIComponent(String(explainId))}`, { headers: headers() });
+          if (!r.ok) return null;
+          const j = await r.json();
+          const heat = (j && Array.isArray(j.heatmapUrls) && j.heatmapUrls[0]) ? j.heatmapUrls[0] : null;
+          if (heat && explainOverlay){ explainOverlay.src = heat; explainOverlay.style.display = 'block'; }
+          return j;
+        }catch(_){ return null }
+      }
+      function syncExplain(){
+        if (!explainOverlay) return;
+        const on = !!(explainToggle && explainToggle.checked);
+        explainOverlay.style.opacity = on ? String((explainOpacity && explainOpacity.value) || 0.6) : '0';
+      }
+      explainToggle?.addEventListener('change', syncExplain);
+      explainOpacity?.addEventListener('input', syncExplain);
+
+      const i2iStrength = document.getElementById('i2iStrength');
+      const i2iStrengthVal = document.getElementById('i2iStrengthVal');
 
       function headers() {
         return { 'Content-Type': 'application/json', 'X-API-Key': API_KEY };
@@ -609,12 +698,24 @@
         });
       }
 
+      function syncI2iDisabled(){
+        const hasInit = !!(initFile && initFile.files && initFile.files[0]);
+        if (i2iStrength) i2iStrength.disabled = !hasInit;
+      }
+      initFile?.addEventListener('change', () => { syncI2iDisabled(); if (i2iStrengthVal && i2iStrength) i2iStrengthVal.textContent = Number(i2iStrength.value).toFixed(2) });
+      i2iStrength?.addEventListener('input', () => { if (i2iStrengthVal) i2iStrengthVal.textContent = Number(i2iStrength.value).toFixed(2) });
+      syncI2iDisabled();
+
       async function onGenerate(){
         try {
           ensureEditButtons();
           resultBody.innerHTML = '<div class="result-placeholder">Generating…</div>';
           const initUrl = await uploadInitIfAny().catch(()=>null);
           const maskUrl = await uploadMaskIfAny().catch(()=>null);
+          let controlnet = undefined;
+          if (cnEnable && cnEnable.checked) {
+            controlnet = { type: (cnType && cnType.value) || 'canny', strength: cnStrength ? Number(cnStrength.value) : 1, imageUrl: initUrl || undefined };
+          }
           const body = {
             prompt: String(promptEl.value || '').slice(0,2000),
             mode: Number(modeRange.value || 0),
@@ -627,6 +728,8 @@
             preview: false,
             initImageUrl: initUrl || undefined,
             maskUrl: maskUrl || undefined,
+            controlnet,
+            strength: (!controlnet && initUrl && i2iStrength) ? Number(i2iStrength.value) : undefined,
           };
           const j = await postJson(`${API_BASE}/v1/generate/image`, body);
           window.lastJobId = j.id;
@@ -642,7 +745,10 @@
           if (st.outputUrl){
             resultBody.innerHTML = '';
             resultImg.src = st.outputUrl;
-            resultBody.appendChild(resultImg);
+            applySafetyBlur(st.safety);
+            resultBody.appendChild(resultStack);
+            if (st.explainId) { await loadExplain(st.explainId); }
+            syncExplain();
             if (Array.isArray(st.previewUrls) && st.previewUrls.length) {
               const pwrap = document.createElement('div'); pwrap.style.display='flex'; pwrap.style.gap='6px'; pwrap.style.marginTop='8px';
               for (const p of st.previewUrls) { const im = document.createElement('img'); im.src = p; im.style.width='64px'; im.style.height='64px'; im.style.objectFit='cover'; im.style.border='1px solid #26262a'; im.style.borderRadius='6px'; pwrap.appendChild(im); }
@@ -653,7 +759,7 @@
               const a = document.createElement('a'); a.href = st.outputUrl; a.target = '_blank'; a.rel='noreferrer'; a.textContent = body.prompt.slice(0,80) || 'result';
               li.appendChild(a);
               if (st.explainId){
-                const ex = document.createElement('a'); ex.href = `/explain/${st.explainId}`
+                const ex = document.createElement('a'); ex.href = `/explain/${st.explainId}`; ex.textContent = ' explain'; ex.target = '_blank'; ex.rel = 'noreferrer'; li.appendChild(ex)
               }
             }
           }
@@ -674,6 +780,7 @@
             resolution: String((resSelect && resSelect.value) || '576p'),
             durationSec: Number((durationSelect && durationSelect.value) || 4),
             sourceImageUrl: sourceUrl || undefined,
+            stylize: !!(videoStylize && videoStylize.checked),
           };
           const j = await postJson(`${API_BASE}/v1/generate/video`, body);
           window.lastJobId = j.id;

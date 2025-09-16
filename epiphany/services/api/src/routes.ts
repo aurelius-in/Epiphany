@@ -102,7 +102,8 @@ const genVideoSchema = z.object({
 	resolution: z.enum(["576p","720p"]).optional(),
 	seed: z.number().int().min(0).max(2_147_483_647).nullable().optional(),
 	modelId: z.enum(["svd","modelscope-t2v"]).optional(),
-	sourceImageUrl: z.string().url().optional()
+	sourceImageUrl: z.string().url().optional(),
+	stylize: z.boolean().optional(),
 })
 
 r.post('/generate/video', async (req, res) => {
@@ -196,7 +197,7 @@ r.get('/jobs/:id', async (req, res) => {
 	const statusMap: Record<string,string> = { waiting: 'queued', delayed: 'queued', active: 'running', completed: 'succeeded', failed: 'failed', paused: 'queued' }
 	const outputUrl = result?.output_url
 	const previewUrls = Array.isArray(result?.preview_urls) ? result.preview_urls : undefined
-	res.json({ id, status: statusMap[state] || state, progress, outputUrl: signed ? maybeSign(outputUrl, true, ttl) : outputUrl, previewUrls: signed && previewUrls ? previewUrls.map((u: string) => maybeSign(u, true, ttl)) : previewUrls, explainId: result?.explain_id, caption: result?.caption, error: failedReason })
+	res.json({ id, status: statusMap[state] || state, progress, outputUrl: signed ? maybeSign(outputUrl, true, ttl) : outputUrl, previewUrls: signed && previewUrls ? previewUrls.map((u: string) => maybeSign(u, true, ttl)) : previewUrls, explainId: result?.explain_id, caption: result?.caption, safety: result?.safety_scores, error: failedReason })
 })
 
 r.get('/jobs/:id/stream', async (req, res) => {
@@ -693,6 +694,24 @@ r.get('/generations/filter', async (req, res) => {
 	const items = await prisma.generation.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit })
 	const nextPage = items.length === limit ? page + 1 : undefined
 	res.json({ items, nextPage })
+})
+
+r.get('/retention/config', (_req, res) => {
+	const env = require('./env') as any
+	try { const { getEnv } = require('./env'); const e = getEnv(); return res.json({ days: e.RETENTION_DAYS || null }) } catch { return res.json({ days: null }) }
+})
+
+r.post('/retention/run', async (_req, res) => {
+	try {
+		const { getEnv } = await import('./env')
+		const e = getEnv()
+		const days = e.RETENTION_DAYS || 0
+		if (!days) return res.status(400).json({ error: 'retention_not_configured' })
+		const job = await queues.retention.add('purge', { days }, { removeOnComplete: true, removeOnFail: true })
+		return res.json({ id: job.id, days })
+	} catch (e: any) {
+		return res.status(500).json({ error: String(e?.message || e) })
+	}
 })
 
 export const routes = r
