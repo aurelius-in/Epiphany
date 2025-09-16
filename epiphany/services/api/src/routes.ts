@@ -9,19 +9,19 @@ const env = getEnv()
 const r = Router()
 
 r.post('/enhance', async (req, res) => {
-	const body = z.object({ prompt: z.string().min(1) }).parse(req.body)
+	const body = z.object({ prompt: z.string().min(1).max(2000) }).parse(req.body)
 	res.json({ promptEnhanced: body.prompt, seedPhrases: [] })
 })
 
 const genImageSchema = z.object({
-	prompt: z.string().min(1),
-	negativePrompt: z.string().optional(),
+	prompt: z.string().min(1).max(2000),
+	negativePrompt: z.string().max(2000).optional(),
 	mode: z.union([z.literal(0), z.literal(1), z.literal(2)]),
-	stylePreset: z.string().optional(),
+	stylePreset: z.string().max(120).optional(),
 	aspect: z.enum(["1:1","16:9","9:16","3:2","2:3"]).optional(),
-	steps: z.number().int().min(1).max(150).optional(),
+	steps: z.number().int().min(4).max(120).optional(),
 	cfg: z.number().min(1).max(20).optional(),
-	seed: z.number().int().nullable().optional(),
+	seed: z.number().int().min(0).max(2_147_483_647).nullable().optional(),
 	modelId: z.enum(["sdxl-base","sdxl-refiner","photoreal-xl","anime-xl"]).optional(),
 	controlnet: z.object({ type: z.enum(["canny","depth","pose"]), strength: z.number().min(0).max(1).optional(), imageUrl: z.string().url().optional() }).optional(),
 	initImageUrl: z.string().url().optional(),
@@ -60,12 +60,12 @@ r.post('/generate/image', async (req, res) => {
 })
 
 const genVideoSchema = z.object({
-	prompt: z.string().min(1),
+	prompt: z.string().min(1).max(2000),
 	mode: z.union([z.literal(0), z.literal(1), z.literal(2)]),
 	durationSec: z.union([z.literal(4), z.literal(8), z.literal(12)]).optional(),
 	fps: z.union([z.literal(12), z.literal(24)]).optional(),
 	resolution: z.enum(["576p","720p"]).optional(),
-	seed: z.number().int().nullable().optional(),
+	seed: z.number().int().min(0).max(2_147_483_647).nullable().optional(),
 	modelId: z.enum(["svd","modelscope-t2v"]).optional(),
 	sourceImageUrl: z.string().url().optional()
 })

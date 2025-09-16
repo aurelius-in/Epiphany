@@ -11,6 +11,14 @@ import { startWorkers } from './workers'
 const env = getEnv()
 const app = express()
 
+app.disable('x-powered-by')
+app.use((_, res, next) => {
+	res.setHeader('X-Content-Type-Options', 'nosniff')
+	res.setHeader('X-Frame-Options', 'SAMEORIGIN')
+	res.setHeader('Referrer-Policy', 'no-referrer')
+	next()
+})
+
 app.use(requestId)
 app.use(cors(env.WEB_ORIGIN ? { origin: env.WEB_ORIGIN } : undefined))
 app.use(express.json({ limit: '2mb' }))
