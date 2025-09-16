@@ -76,7 +76,12 @@ export default function GalleryPage() {
 					<div key={it.id} style={{border:'1px solid #26262a', borderRadius:8, overflow:'hidden', background:'#101012'}}>
 						<a href={it.outputUrl ?? '#'} target="_blank" rel="noreferrer" style={{textDecoration:'none', color:'#e6e6ea'}}>
 							{it.kind === 'image' && it.outputUrl && (
-								<img src={it.outputUrl} alt={it.id} style={{width:'100%', height:220, objectFit:'cover'}} />
+								<div style={{position:'relative'}}>
+									<img src={it.outputUrl} alt={it.id} style={{width:'100%', height:220, objectFit:'cover', filter: (it.safety && typeof (it.safety as any).nsfw === 'number' && (it.safety as any).nsfw > 0) ? 'blur(10px)' : 'none'}} />
+									{(it.safety && typeof (it.safety as any).nsfw === 'number' && (it.safety as any).nsfw > 0) && (
+										<div style={{position:'absolute', inset:0, display:'grid', placeItems:'center', color:'#e6e6ea', fontWeight:600}}>NSFW blurred</div>
+									)}
+								</div>
 							)}
 							{it.kind === 'video' && it.outputUrl && (
 								<div style={{position:'relative'}}>

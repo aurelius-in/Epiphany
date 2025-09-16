@@ -142,6 +142,7 @@
 
       <div class="actions">
         <button id="btnGenerate" class="btn-gradient">Generate</button>
+        <button class="btn-ghost" id="btnGenerateVideo">Generate Video</button>
         <button class="btn-ghost" id="btnEnhance">Enhance Prompt</button>
         <button class="btn-ghost" id="btnRandomSeed">Randomize Seed</button>
       </div>
@@ -270,10 +271,17 @@
       seedInp.value = r;
       updateMetaFromControls();
     });
-    document.getElementById('btnEnhance')?.addEventListener('click', (e) => {
+    document.getElementById('btnEnhance')?.addEventListener('click', async (e) => {
       e.preventDefault();
-      // stub: no-op for now
-      alert('Enhance Prompt (demo stub)');
+      try{
+        const res = await postJson(`${API_BASE}/v1/enhance`, { prompt: String(promptEl.value || '') });
+        if (res && res.promptEnhanced) {
+          promptEl.value = res.promptEnhanced;
+          updateMetaFromControls();
+        }
+      }catch(err){
+        console.error('enhance failed', err);
+      }
     });
   </script>
 
@@ -291,6 +299,7 @@
       const cfgEl = document.getElementById('cfgInput');
       const seedEl = document.getElementById('seedInput');
       const genBtn = document.getElementById('btnGenerate');
+      const genVideoBtn = document.getElementById('btnGenerateVideo');
       const initFile = document.getElementById('initFile');
       const resultImg = document.getElementById('resultImg');
       const resultBody = document.getElementById('resultBody');

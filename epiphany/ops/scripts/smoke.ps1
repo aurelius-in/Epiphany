@@ -45,6 +45,14 @@ Do {
 	}
 } While ((Get-Date) -lt $deadline)
 
+Write-Host "Assets..."
+$assets = Invoke-RestMethod -Headers @{"X-API-Key"=$ApiKey} -Uri "$ApiBase/v1/assets?signed=1&limit=5" -Method GET
+if ($assets.items.Count -gt 0) { Write-Host "Asset URL:" $assets.items[0].url }
+
+Write-Host "Events..."
+$events = Invoke-RestMethod -Headers @{"X-API-Key"=$ApiKey} -Uri "$ApiBase/v1/events?limit=5" -Method GET
+if ($events.items.Count -gt 0) { Write-Host "Event Type:" $events.items[0].type }
+
 Write-Host "Edit job (upscale)..."
 $ed = Invoke-RestMethod -Headers @{"X-API-Key"=$ApiKey; "Content-Type"="application/json"} -Uri "$ApiBase/v1/edit/upscale" -Method POST -Body '{"imageUrl":"http://example.com/foo.png","scale":2}'
 $edId = $ed.id
