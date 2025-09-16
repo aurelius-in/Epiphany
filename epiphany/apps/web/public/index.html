@@ -420,7 +420,14 @@
       }
       async function postJson(url, body) {
         const res = await fetch(url, { method: 'POST', headers: headers(), body: JSON.stringify(body) });
-        if (!res.ok) { try{ showToast('Request failed: ' + res.status, { type:'error' }) }catch(_){}; throw new Error('HTTP ' + res.status); }
+        if (!res.ok) {
+          try {
+            const ra = res.headers.get('Retry-After');
+            if (res.status === 429 && ra) showToast(`Rate limited. Retry after ${ra}s`, { type: 'error' });
+            else showToast('Request failed: ' + res.status, { type:'error' });
+          } catch(_) {}
+          throw new Error('HTTP ' + res.status);
+        }
         return res.json();
       }
       async function uploadInitIfAny() {
@@ -456,7 +463,14 @@
       }
       async function getJson(url) {
         const res = await fetch(url, { headers: headers() });
-        if (!res.ok) { try{ showToast('Request failed: ' + res.status, { type:'error' }) }catch(_){}; throw new Error('HTTP ' + res.status); }
+        if (!res.ok) {
+          try {
+            const ra = res.headers.get('Retry-After');
+            if (res.status === 429 && ra) showToast(`Rate limited. Retry after ${ra}s`, { type: 'error' });
+            else showToast('Request failed: ' + res.status, { type:'error' });
+          } catch(_) {}
+          throw new Error('HTTP ' + res.status);
+        }
         return res.json();
       }
       const sleep = (ms) => new Promise(r => setTimeout(r, ms));
