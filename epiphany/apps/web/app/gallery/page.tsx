@@ -98,6 +98,7 @@ export default function GalleryPage() {
 					{styles.map(s => <option key={s} value={s}>{s}</option>)}
 				</select>
 				<button onClick={()=>{ setQ(''); load(1) }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Apply Filters</button>
+				<button onClick={()=>{ setQ(''); setModelId(''); setStylePreset(''); load(1) }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Clear</button>
 			</div>
 			{loading && page === 1 && <div>Loading…</div>}
 			{error && <div style={{color:'tomato'}}>Error: {error}</div>}
@@ -125,7 +126,7 @@ export default function GalleryPage() {
 							)}
 						</a>
 						<div style={{padding:8, fontSize:12, color:'#a4a4ad', display:'flex', justifyContent:'space-between', alignItems:'center', gap:8}}>
-							<div>{it.kind} • {it.status}</div>
+							<div>{it.kind} • {it.status} {it.createdAt && (<span style={{marginLeft:8, color:'#7c7c86'}}>{new Date(it.createdAt).toLocaleString()}</span>)}</div>
 							<div style={{display:'flex', gap:6, alignItems:'center'}}>
 								{it.safety && <span style={{border:'1px solid #26262a', padding:'2px 6px', borderRadius:8}}>{safetyLabel(it.safety)}</span>}
 								<a href={recreateHref(it)} style={{color:'#cfd0ff'}}>Recreate</a>

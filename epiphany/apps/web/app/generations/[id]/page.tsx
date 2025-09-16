@@ -64,7 +64,7 @@ export default function GenerationDetail({ params }: { params: { id: string } })
 	return (
 		<div style={{padding:16, display:'grid', gap:16}}>
 			<div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-				<h1>Generation {gen.id}</h1>
+				<h1>Generation {gen.id} <button onClick={()=>{ try{ navigator.clipboard.writeText(gen.id || '') }catch{} }} style={{marginLeft:8, fontSize:12}}>Copy ID</button></h1>
 				<div style={{display:'flex', gap:8}}>
 					{progress != null && <span style={{border:'1px solid #26262a', padding:'6px 10px', borderRadius:8}}>Progress: {progress}%</span>}
 					<button onClick={async()=>{ try{ await fetch(`/api/proxy/v1/explain/${id}/refresh`, { method:'POST' }); location.reload() }catch{} }} style={{background:'#0b0b0d', color:'#ddd', border:'1px solid #26262a', padding:'8px 12px', borderRadius:8}}>Refresh Explain</button>
