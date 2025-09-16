@@ -331,6 +331,18 @@ r.get('/assets/export/csv', async (_req, res) => {
 	res.setHeader('Content-Disposition', 'attachment; filename="assets.csv"')
 	res.send(csv)
 })
+
+r.get('/assets/sign', async (req, res) => {
+	const url = String(req.query.url || '')
+	if (!url) return res.status(400).json({ error: 'missing_url' })
+	try {
+		const { signPublicUrl } = await import('./s3')
+		const signed = signPublicUrl(url, parseInt(String(req.query.ttl || '3600')) || 3600)
+		return res.json({ url: signed })
+	} catch (e: any) {
+		return res.status(400).json({ error: 'cannot_sign', message: String(e?.message || e) })
+	}
+})
 r.get('/assets/:id', async (req, res) => {
 	const id = String(req.params.id)
 	const a = await prisma.asset.findUnique({ where: { id } }).catch(() => null)
